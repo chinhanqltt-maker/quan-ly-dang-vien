@@ -134,12 +134,10 @@ input:focus, select:focus, textarea:focus {
     size: A4 portrait;
     margin: 12mm 15mm 10mm 20mm;
   }
-  html, body {
+  html, body, .print-page, .print-page * {
     background: #fff !important;
     color: #000 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-family: "Times New Roman", Times, serif !important;
+    font-family: "Times New Roman", Times, Georgia, serif !important;
   }
   .no-print, header, nav, main, footer {
     display: none !important;
@@ -157,5 +155,6 @@ input:focus, select:focus, textarea:focus {
   }
   .schedule-table, .schedule-table th, .schedule-table td {
     border: 1px solid black !important;
+    font-family: "Times New Roman", Times, Georgia, serif !important;
   }
 }
