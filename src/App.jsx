@@ -824,6 +824,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       <div>{datePart}</div>
                       {dowPart && <div style={{ fontSize: '10pt' }}>{dowPart}</div>}
                     </td>
+                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
                     <td style={{ border: '1px solid black', padding: '1px 2px', textAlign: 'center', lineHeight: '1.1' }}>
                       <div style={{ 
                         fontSize: isLongName ? '10pt' : '13pt', 
