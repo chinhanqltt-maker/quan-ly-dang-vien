@@ -383,34 +383,51 @@ export default function App() {
         <style>
           @page Section1 {
             size: 21.0cm 29.7cm;
-            margin: 1.5cm 1.5cm 1.2cm 2.0cm;
-            mso-header-margin: 36.0pt;
-            mso-footer-margin: 36.0pt;
+            margin: 1.0cm 1.5cm 1.0cm 2.0cm;
+            mso-header-margin: 0pt;
+            mso-footer-margin: 0pt;
             mso-paper-source: 0;
           }
           div.Section1 { page: Section1; }
           body {
             font-family: 'Times New Roman', serif;
-            font-size: 14pt;
-            line-height: 1.2;
+            font-size: 13pt;
+            line-height: 100%;
+            mso-line-height-rule: exactly;
             color: black;
+            margin: 0;
+            padding: 0;
           }
-          p { margin: 0 0 4pt 0; }
-          table { border-collapse: collapse; width: 100%; }
+          p, div {
+            margin-top: 0pt !important;
+            margin-bottom: 0pt !important;
+            line-height: 100% !important;
+            mso-line-height-rule: exactly;
+          }
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 0pt;
+            margin-bottom: 0pt;
+          }
+          td, th {
+            mso-line-height-rule: exactly;
+            line-height: 100%;
+          }
         </style>
       </head>
       <body>
         <div class="Section1">
           <!-- Header Table -->
-          <table style="width: 100%; border: none; margin-bottom: 6pt;">
+          <table style="width: 100%; border: none; margin-bottom: 2pt;">
             <tr>
-              <td style="width: 56%; text-align: center; vertical-align: top; border: none; font-size: 11pt; white-space: nowrap;">
+              <td style="width: 56%; text-align: center; vertical-align: top; border: none; font-size: 11pt; white-space: nowrap; line-height: 100%;">
                 ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG<br/>
                 <b>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</b><br/>
                 *<br/>
                 <span style="font-size: 12pt;">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</span>
               </td>
-              <td style="width: 44%; text-align: center; vertical-align: top; border: none; font-size: 12pt; white-space: nowrap;">
+              <td style="width: 44%; text-align: center; vertical-align: top; border: none; font-size: 12pt; white-space: nowrap; line-height: 100%;">
                 <b>ĐẢNG CỘNG SẢN VIỆT NAM</b><br/><br/>
                 <i>An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng ${String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, '0')} năm ${selectedMonth === 1 ? selectedYear - 1 : selectedYear}</i>
               </td>
@@ -418,56 +435,56 @@ export default function App() {
           </table>
 
           <!-- Title -->
-          <div style="text-align: center; margin: 6pt 0 4pt 0;">
-            <p style="font-size: 14pt; font-weight: bold; margin: 0;">THÔNG BÁO</p>
-            <p style="font-size: 14pt; font-weight: bold; margin: 0;">Lịch sinh hoạt lệ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear} của các chi bộ trực thuộc</p>
-            <p style="font-size: 12pt; margin: 0;">-----</p>
+          <div style="text-align: center; margin-top: 2pt; margin-bottom: 2pt;">
+            <p style="font-size: 14pt; font-weight: bold; margin: 0; line-height: 100%;">THÔNG BÁO</p>
+            <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">Lịch sinh hoạt lệ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear} của các chi bộ trực thuộc</p>
+            <p style="font-size: 11pt; margin: 0; line-height: 100%;">-----</p>
           </div>
 
-          <!-- Paragraphs Cỡ chữ 14 chuẩn quy định -->
-          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-bottom: 4pt;">
+          <!-- Paragraphs Cỡ chữ 14 chuẩn quy định Spacing 0 Single -->
+          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-top: 2pt; margin-bottom: 2pt; line-height: 100%;">
             Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
           </p>
-          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-bottom: 6pt;">
+          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-top: 2pt; margin-bottom: 4pt; line-height: 100%;">
             Theo đăng ký lịch sinh hoạt lệ chi bộ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
           </p>
 
           <!-- 13 Chi bộ Table -->
-          <table style="width: 100%; border: 1px solid black; font-size: 11pt; margin-top: 4pt; margin-bottom: 6pt;">
-            <tr style="text-align: center; font-weight: bold; font-size: 13pt; background-color: #f2f2f2;">
-              <td style="border: 1px solid black; padding: 4px; width: 6%;">S<br/>TT</td>
-              <td style="border: 1px solid black; padding: 4px; width: 22%;">Chi bộ</td>
-              <td style="border: 1px solid black; padding: 4px; width: 8%;">Số<br/>lượng</td>
-              <td style="border: 1px solid black; padding: 4px; width: 22%;">Thời<br/>gian</td>
-              <td style="border: 1px solid black; padding: 4px; width: 18%;">Địa điểm</td>
-              <td style="border: 1px solid black; padding: 4px; width: 24%;">Bí thư,<br/>điện thoại</td>
+          <table style="width: 100%; border: 1px solid black; font-size: 10.5pt; margin-top: 2pt; margin-bottom: 4pt;">
+            <tr style="text-align: center; font-weight: bold; font-size: 12pt; background-color: #f2f2f2; height: 20px;">
+              <td style="border: 1px solid black; padding: 2px; width: 6%;">S<br/>TT</td>
+              <td style="border: 1px solid black; padding: 2px 4px; width: 22%;">Chi bộ</td>
+              <td style="border: 1px solid black; padding: 2px; width: 8%;">Số<br/>lượng</td>
+              <td style="border: 1px solid black; padding: 2px 3px; width: 22%;">Thời<br/>gian</td>
+              <td style="border: 1px solid black; padding: 2px 4px; width: 18%;">Địa điểm</td>
+              <td style="border: 1px solid black; padding: 2px 3px; width: 24%;">Bí thư,<br/>điện thoại</td>
             </tr>
             ${tableRows}
-            <tr style="font-weight: bold; text-align: center;">
-              <td colspan="2" style="border: 1px solid black; padding: 4px; text-align: center;">TỔNG SỐ</td>
-              <td style="border: 1px solid black; padding: 4px;">${totalMembersCount}</td>
-              <td style="border: 1px solid black; padding: 4px;"></td>
-              <td style="border: 1px solid black; padding: 4px;"></td>
-              <td style="border: 1px solid black; padding: 4px;"></td>
+            <tr style="font-weight: bold; text-align: center; height: 20px;">
+              <td colspan="2" style="border: 1px solid black; padding: 2px 4px; text-align: center;">TỔNG SỐ</td>
+              <td style="border: 1px solid black; padding: 2px;">${totalMembersCount}</td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
             </tr>
           </table>
 
           <!-- Footer Table -->
-          <table style="width: 100%; border: none; margin-top: 6pt;">
+          <table style="width: 100%; border: none; margin-top: 2pt;">
             <tr>
-              <td style="width: 50%; vertical-align: top; border: none;">
-                <p style="font-size: 12pt; font-weight: bold; margin: 0;"><u>Nơi nhận:</u></p>
-                <p style="font-size: 12pt; line-height: 1.25; margin: 0;">
+              <td style="width: 50%; vertical-align: top; border: none; line-height: 100%;">
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;"><u>Nơi nhận:</u></p>
+                <p style="font-size: 12pt; line-height: 100%; margin: 0;">
                   - Đảng ủy Sở Công Thương;<br/>
                   - Bí thư các Chi bộ trực thuộc;<br/>
                   - Lưu: Đảng ủy.
                 </p>
               </td>
-              <td style="width: 50%; text-align: center; vertical-align: top; border: none;">
-                <p style="font-size: 13pt; font-weight: bold; margin: 0;">T/M ĐẢNG ỦY</p>
-                <p style="font-size: 13pt; font-weight: bold; margin: 0;">BÍ THƯ</p>
-                <div style="height: 50pt;"></div>
-                <p style="font-size: 14pt; font-weight: bold; margin: 0;">Nguyễn Trung Tiến</p>
+              <td style="width: 50%; text-align: center; vertical-align: top; border: none; line-height: 100%;">
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;">T/M ĐẢNG ỦY</p>
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;">BÍ THƯ</p>
+                <div style="height: 36pt;"></div>
+                <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">Nguyễn Trung Tiến</p>
               </td>
             </tr>
           </table>
