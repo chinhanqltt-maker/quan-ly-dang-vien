@@ -668,7 +668,11 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       </h3>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      1. Ngày 20 gửi link Zalo cho các Đội $ightarrow$ 2. Đội tự chọn ngày $ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $ightarrow$ 5. In trình ký Bí thư.
+                      1. Ngày 20 gửi link Zalo cho các Đội $
+ightarrow$ 2. Đội tự chọn ngày $
+ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $
+ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $
+ightarrow$ 5. In trình ký Bí thư.
                     </p>
                   </div>
 
@@ -767,13 +771,30 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                             />
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              placeholder="VD: 07/8/2026 (thứ Sáu)"
-                              value={item.thoiGian === 'Chưa đăng ký' ? '' : item.thoiGian}
-                              onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
-                              className="text-xs font-semibold"
-                            />
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="date"
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const [yyyy, mm, dd] = e.target.value.split('-');
+                                    const d = new Date(e.target.value);
+                                    const days = ['Chủ Nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'];
+                                    const dow = days[d.getDay()];
+                                    const formatted = `${dd}/${mm}/${yyyy} (${dow})`;
+                                    handleUpdateSchedule(item.chiBoId, 'thoiGian', formatted);
+                                  }
+                                }}
+                                className="w-9 px-1 py-1 text-xs cursor-pointer bg-slate-50 dark:bg-slate-800"
+                                title="Bấm vào để chọn ngày trên lịch (tự động hiện Thứ)"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Chọn lịch hoặc nhập: 07/8/2026 (thứ Sáu)"
+                                value={item.thoiGian === 'Chưa đăng ký' ? '' : item.thoiGian}
+                                onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
+                                className="flex-1 text-xs font-bold text-blue-700 dark:text-blue-300"
+                              />
+                            </div>
                           </td>
                           <td>
                             <input
