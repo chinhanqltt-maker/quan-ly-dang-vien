@@ -456,8 +456,8 @@ export default function App() {
           <table style="width: 100%; border: none; margin-top: 6pt;">
             <tr>
               <td style="width: 50%; vertical-align: top; border: none;">
-                <p style="font-size: 12pt; font-weight: bold; font-style: italic; margin: 0;">Nơi nhận:</p>
-                <p style="font-size: 11pt; font-style: italic; line-height: 1.25; margin: 0;">
+                <p style="font-size: 12pt; font-weight: bold; margin: 0;">Nơi nhận:</p>
+                <p style="font-size: 12pt; line-height: 1.25; margin: 0;">
                   - Đảng ủy Sở Công Thương;<br/>
                   - Bí thư các Chi bộ trực thuộc;<br/>
                   - Lưu: Đảng ủy.
@@ -825,8 +825,8 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             <tbody>
               <tr style={{ border: 'none' }}>
                 <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12pt', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
-                  <div style={{ fontSize: '11pt', fontStyle: 'italic', lineHeight: '1.25' }}>
+                  <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>Nơi nhận:</div>
+                  <div style={{ fontSize: '12pt', lineHeight: '1.25' }}>
                     - Đảng ủy Sở Công Thương;<br />
                     - Bí thư các Chi bộ trực thuộc;<br />
                     - Lưu: Đảng ủy.
