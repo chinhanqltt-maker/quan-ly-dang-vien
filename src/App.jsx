@@ -389,13 +389,13 @@ export default function App() {
           <!-- Header Table -->
           <table style="width: 100%; border: none; margin-bottom: 6pt;">
             <tr>
-              <td style="width: 48%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
+              <td style="width: 56%; text-align: center; vertical-align: top; border: none; font-size: 11pt; white-space: nowrap;">
                 ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG<br/>
                 <b>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</b><br/>
                 *<br/>
-                <span style="font-size: 13pt;">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</span>
+                <span style="font-size: 12pt;">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</span>
               </td>
-              <td style="width: 52%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
+              <td style="width: 44%; text-align: center; vertical-align: top; border: none; font-size: 12pt; white-space: nowrap;">
                 <b>ĐẢNG CỘNG SẢN VIỆT NAM</b><br/><br/>
                 <i>An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}</i>
               </td>
@@ -713,16 +713,16 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '4pt' }}>
             <tbody>
               <tr style={{ border: 'none' }}>
-                <td style={{ width: '48%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
-                  <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
-                  <div style={{ fontSize: '11pt', margin: '1px 0' }}>*</div>
-                  <div style={{ fontSize: '13pt' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
+                <td style={{ width: '56%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '11pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                  <div style={{ fontSize: '11pt', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                  <div style={{ fontSize: '10pt', margin: '1px 0' }}>*</div>
+                  <div style={{ fontSize: '12pt' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
                 </td>
-                <td style={{ width: '52%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
-                  <div style={{ height: '14pt' }}></div>
-                  <div style={{ fontSize: '13pt', fontStyle: 'italic' }}>
+                <td style={{ width: '44%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                  <div style={{ height: '12pt' }}></div>
+                  <div style={{ fontSize: '12pt', fontStyle: 'italic' }}>
                     An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
                   </div>
                 </td>
