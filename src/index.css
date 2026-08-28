@@ -130,25 +130,32 @@ input:focus, select:focus, textarea:focus {
 
 /* Print Styling for Party official document */
 @media print {
-  body {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 10mm 20mm;
+  }
+  html, body {
     background: #fff !important;
     color: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: "Times New Roman", Times, serif !important;
   }
-  .no-print {
+  .no-print, header, nav, main, footer {
     display: none !important;
   }
-  .print-only {
+  .print-page {
     display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
-  .card-glass {
-    box-shadow: none !important;
-    border: none !important;
+  table {
+    border-collapse: collapse !important;
   }
-  table, th, td {
-    border: 1px solid #000 !important;
-  }
-  th {
-    background-color: #eee !important;
-    color: #000 !important;
+  .schedule-table, .schedule-table th, .schedule-table td {
+    border: 1px solid black !important;
   }
 }

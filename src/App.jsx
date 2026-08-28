@@ -820,22 +820,22 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </div>
         </header>
 
-        {/* PRINT DOCUMENT FORMAT - THIẾT KẾ CO GỌN CHUẨN KHÍT 1 TRANG A4 THEO FILE MẪU GỐC */}
-        <div className="hidden print:block text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', padding: '15px 25px', fontSize: '12.5px', lineHeight: '1.2' }}>
+        {/* PRINT DOCUMENT FORMAT - Y HỆT MẪU GỐC CỦA ĐỒNG CHÍ, KHÍT 1 TRANG A4 */}
+        <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13px', lineHeight: '1.25' }}>
           {/* Header 2 columns */}
-          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '8px' }}>
+          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '6px' }}>
             <tbody>
               <tr style={{ border: 'none' }}>
                 <td style={{ width: '48%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '11.5px' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
-                  <div style={{ fontSize: '11.5px', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                  <div style={{ fontSize: '12px' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
                   <div style={{ fontSize: '11px', margin: '1px 0' }}>*</div>
-                  <div style={{ fontSize: '12px' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
+                  <div style={{ fontSize: '12.5px' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
                 </td>
                 <td style={{ width: '52%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
                   <div style={{ height: '14px' }}></div>
-                  <div style={{ fontSize: '12px', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '12.5px', fontStyle: 'italic' }}>
                     An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
                   </div>
                 </td>
@@ -844,51 +844,50 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </table>
 
           {/* Title */}
-          <div style={{ textAlign: 'center', margin: '6px 0 4px 0' }}>
-            <div style={{ fontSize: '13.5px', fontWeight: 'bold' }}>THÔNG BÁO</div>
-            <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>
-              Lịch sinh hoạt lệ tháng {selectedMonth}/{selectedYear} của các chi bộ trực thuộc
+          <div style={{ textAlign: 'center', margin: '4px 0 2px 0' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>THÔNG BÁO</div>
+            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
+              Lịch sinh hoạt lệ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear} của các chi bộ trực thuộc
             </div>
             <div style={{ fontSize: '11px' }}>-----</div>
           </div>
 
           {/* Paragraphs */}
-          <div style={{ textIndent: '25px', textAlign: 'justify', marginBottom: '2px', fontSize: '12px' }}>
+          <div style={{ textIndent: '30px', textAlign: 'justify', marginBottom: '2px', fontSize: '12.5px' }}>
             Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
           </div>
-          <div style={{ textIndent: '25px', textAlign: 'justify', marginBottom: '6px', fontSize: '12px' }}>
+          <div style={{ textIndent: '30px', textAlign: 'justify', marginBottom: '4px', fontSize: '12.5px' }}>
             Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
           </div>
 
           {/* 13 Branch Schedule Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11px', margin: '4px 0' }}>
+          <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11.5px', margin: '3px 0' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f0f0f0', textAlign: 'center', fontWeight: 'bold' }}>
-                <th style={{ border: '1px solid black', padding: '3px 2px', width: '5%' }}>STT</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '20%' }}>Chi bộ</th>
-                <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>SL</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '24%' }}>Thời gian</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '20%' }}>Địa điểm</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '25%' }}>Bí thư, điện thoại</th>
+              <tr style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>S<br />TT</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Chi bộ</th>
+                <th style={{ border: '1px solid black', padding: '3px 2px', width: '8%' }}>Số<br />lượng</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Thời<br />gian</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '18%' }}>Địa điểm</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '24%' }}>Bí thư,<br />điện thoại</th>
               </tr>
             </thead>
             <tbody>
               {currentMonthSchedules.map((item, idx) => (
-                <tr key={idx} style={{ height: '20px' }}>
+                <tr key={idx} style={{ height: '21px' }}>
                   <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
                   <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.thoiGian}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center', whiteSpace: 'pre-line' }}>{item.thoiGian}</td>
                   <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.diaDiem}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px', lineHeight: '1.1' }}>
+                  <td style={{ border: '1px solid black', padding: '2px 4px', lineHeight: '1.15' }}>
                     <div>{item.biThu}</div>
                     <div style={{ fontSize: '10.5px' }}>{item.sdt}</div>
                   </td>
                 </tr>
               ))}
               <tr style={{ fontWeight: 'bold', textAlign: 'center' }}>
-                <td style={{ border: '1px solid black', padding: '3px' }}></td>
-                <td style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'left' }}>TỔNG SỐ</td>
+                <td colSpan="2" style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'center' }}>TỔNG SỐ</td>
                 <td style={{ border: '1px solid black', padding: '3px 2px' }}>{totalMembersCount}</td>
                 <td style={{ border: '1px solid black', padding: '3px' }}></td>
                 <td style={{ border: '1px solid black', padding: '3px' }}></td>
@@ -902,18 +901,18 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             <tbody>
               <tr style={{ border: 'none' }}>
                 <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
-                  <div style={{ fontSize: '10.5px', fontStyle: 'italic', lineHeight: '1.2' }}>
+                  <div style={{ fontSize: '11.5px', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
+                  <div style={{ fontSize: '11px', fontStyle: 'italic', lineHeight: '1.25' }}>
                     - Đảng ủy Sở Công Thương;<br />
                     - Bí thư các Chi bộ trực thuộc;<br />
                     - Lưu: Đảng ủy.
                   </div>
                 </td>
                 <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>BÍ THƯ</div>
-                  <div style={{ height: '48px' }}></div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>BÍ THƯ</div>
+                  <div style={{ height: '45px' }}></div>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
                 </td>
               </tr>
             </tbody>
@@ -921,7 +920,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
         </div>
 
         {/* MAIN BODY CONTENT */}
-        <main className="max-w-7xl mx-auto p-6 flex-1 w-full">
+        <main className="max-w-7xl mx-auto p-6 flex-1 w-full no-print">
 
           {/* TAB 1: LỊCH HỌP & DUYỆT TRÌNH KÝ */}
           {activeTab === 'meetings' && (
