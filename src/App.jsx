@@ -348,8 +348,11 @@ export default function App() {
   // XUẤT FILE WORD .DOC CHUẨN ĐỊNH DẠNG MICROSOFT WORD 100% KHÔNG LỖI
   const handleExportWordDoc = () => {
     const tableRows = currentMonthSchedules.map((item, idx) => {
-      const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
-      const biThuStyle = isLongName ? 'font-size: 10pt; letter-spacing: -0.5pt; white-space: nowrap;' : 'font-size: 13pt;';
+      const isThuyOrThuy = item.biThu && (item.biThu.includes('Trần Thị Thu Thanh Thủy') || item.biThu.includes('Nguyễn Phúc Xuân Thụy'));
+      const isThuyLong = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+      const biThuStyle = isThuyOrThuy 
+        ? `font-size: 12pt; ${isThuyLong ? 'letter-spacing: -0.3pt;' : ''} white-space: nowrap;` 
+        : 'font-size: 13pt;';
       
       let datePart = item.thoiGian || '';
       let dowPart = '';
@@ -369,7 +372,7 @@ export default function App() {
         </td>
         <td style="border: 1px solid black; padding: 2px 4px; text-align: center; font-size: 11.5pt;">${item.diaDiem}</td>
         <td style="border: 1px solid black; padding: 1px 2px; text-align: center; line-height: 100%;">
-          <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 10pt;">${item.sdt || ''}</span>
+          <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 10.5pt;">${item.sdt || ''}</span>
         </td>
       </tr>
       `;
@@ -804,7 +807,8 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </thead>
             <tbody>
               {currentMonthSchedules.map((item, idx) => {
-                const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+                const isThuyOrThuy = item.biThu && (item.biThu.includes('Trần Thị Thu Thanh Thủy') || item.biThu.includes('Nguyễn Phúc Xuân Thụy'));
+                const isThuyLong = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
                 
                 // Tách Ngày và Thứ thành 2 dòng riêng biệt
                 let datePart = item.thoiGian || '';
@@ -827,14 +831,14 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
                     <td style={{ border: '1px solid black', padding: '1px 2px', textAlign: 'center', lineHeight: '1.1' }}>
                       <div style={{ 
-                        fontSize: isLongName ? '10pt' : '13pt', 
-                        letterSpacing: isLongName ? '-0.6px' : 'normal',
+                        fontSize: isThuyOrThuy ? '12pt' : '13pt', 
+                        letterSpacing: isThuyLong ? '-0.3px' : 'normal',
                         whiteSpace: 'nowrap',
                         fontWeight: 'bold'
                       }}>
                         {item.biThu}
                       </div>
-                      <div style={{ fontSize: '10pt' }}>{item.sdt}</div>
+                      <div style={{ fontSize: '10.5pt' }}>{item.sdt}</div>
                     </td>
                   </tr>
                 );
