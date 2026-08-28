@@ -341,12 +341,23 @@ export default function App() {
     const tableRows = currentMonthSchedules.map((item, idx) => {
       const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
       const biThuStyle = isLongName ? 'font-size: 9.5pt; letter-spacing: -0.3pt; white-space: nowrap;' : 'font-size: 11pt;';
+      
+      let datePart = item.thoiGian || '';
+      let dowPart = '';
+      if (item.thoiGian && item.thoiGian.includes('(')) {
+        const parts = item.thoiGian.split('(');
+        datePart = parts[0].trim();
+        dowPart = '(' + parts[1].trim();
+      }
+
       return `
       <tr style="height: 22px;">
         <td style="border: 1px solid black; padding: 2px; text-align: center;">${idx + 1}</td>
         <td style="border: 1px solid black; padding: 2px 4px;">${item.chiBo}</td>
         <td style="border: 1px solid black; padding: 2px; text-align: center;">${item.sl}</td>
-        <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.thoiGian}</td>
+        <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 1.15;">
+          ${datePart}<br/><span style="font-size: 10pt;">${dowPart}</span>
+        </td>
         <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.diaDiem}</td>
         <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 1.15;">
           <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 9.5pt;">${item.sdt || ''}</span>
@@ -766,12 +777,25 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             <tbody>
               {currentMonthSchedules.map((item, idx) => {
                 const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+                
+                // Tách Ngày và Thứ thành 2 dòng riêng biệt
+                let datePart = item.thoiGian || '';
+                let dowPart = '';
+                if (item.thoiGian && item.thoiGian.includes('(')) {
+                  const parts = item.thoiGian.split('(');
+                  datePart = parts[0].trim();
+                  dowPart = '(' + parts[1].trim();
+                }
+
                 return (
-                  <tr key={idx} style={{ height: '20px' }}>
+                  <tr key={idx} style={{ height: '22px' }}>
                     <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
                     <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
                     <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
-                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center', whiteSpace: 'pre-line' }}>{item.thoiGian}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
+                      <div>{datePart}</div>
+                      {dowPart && <div style={{ fontSize: '10pt' }}>{dowPart}</div>}
+                    </td>
                     <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
                     <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
                       <div style={{ 
