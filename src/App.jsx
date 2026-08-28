@@ -10,18 +10,6 @@ import {
 } from './data';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { 
-  Document, 
-  Packer, 
-  Paragraph, 
-  Table, 
-  TableCell, 
-  TableRow, 
-  TextRun, 
-  AlignmentType, 
-  WidthType, 
-  BorderStyle 
-} from 'docx';
 import {
   Users,
   TrendingUp,
@@ -346,246 +334,140 @@ export default function App() {
     XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_06_Thang_${selectedYear}.xlsx`);
   };
 
-  // XUẤT FILE WORD .DOCX CHUẨN 1 TRANG Y HỆT MẪU GỐC CỦA ĐỒNG CHÍ
-  const handleExportDocx = async () => {
-    const totalDv = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
+  const totalMembersCount = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
 
-    const doc = new Document({
-      sections: [{
-        properties: {
-          page: {
-            margin: {
-              top: 720, // 0.5 inch
-              bottom: 720,
-              left: 1000,
-              right: 800
-            }
+  // XUẤT FILE WORD .DOC CHUẨN ĐỊNH DẠNG MICROSOFT WORD 100% KHÔNG LỖI
+  const handleExportWordDoc = () => {
+    const tableRows = currentMonthSchedules.map((item, idx) => `
+      <tr style="height: 22px;">
+        <td style="border: 1px solid black; padding: 2px; text-align: center;">${idx + 1}</td>
+        <td style="border: 1px solid black; padding: 2px 4px;">${item.chiBo}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center;">${item.sl}</td>
+        <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.thoiGian}</td>
+        <td style="border: 1px solid black; padding: 2px 4px;">${item.diaDiem}</td>
+        <td style="border: 1px solid black; padding: 2px 4px; line-height: 1.15;">
+          <b>${item.biThu}</b><br/>${item.sdt || ''}
+        </td>
+      </tr>
+    `).join('');
+
+    const wordHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>THÔNG BÁO LỊCH HỌP THÁNG ${selectedMonth}-${selectedYear}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          @page Section1 {
+            size: 21.0cm 29.7cm;
+            margin: 1.5cm 1.5cm 1.2cm 2.0cm;
+            mso-header-margin: 36.0pt;
+            mso-footer-margin: 36.0pt;
+            mso-paper-source: 0;
           }
-        },
-        children: [
-          // Header Table
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-              insideHorizontal: { style: BorderStyle.NONE },
-              insideVertical: { style: BorderStyle.NONE }
-            },
-            rows: [
-              new TableRow({
-                children: [
-                  new TableCell({
-                    width: { size: 48, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: "ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG", font: "Times New Roman", size: 20 }),
-                        ]
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: "ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG", bold: true, font: "Times New Roman", size: 20 }),
-                        ]
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: "*", font: "Times New Roman", size: 20 }),
-                        ]
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: "Số         -TB/ĐU", font: "Times New Roman", size: 22 }),
-                        ]
-                      })
-                    ]
-                  }),
-                  new TableCell({
-                    width: { size: 52, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: "ĐẢNG CỘNG SẢN VIỆT NAM", bold: true, font: "Times New Roman", size: 22 }),
-                        ]
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [new TextRun({ text: "" })]
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { line: 240, after: 0 },
-                        children: [
-                          new TextRun({ text: `An Giang, ngày    tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}`, italics: true, font: "Times New Roman", size: 22 }),
-                        ]
-                      })
-                    ]
-                  })
-                ]
-              })
-            ]
-          }),
+          div.Section1 { page: Section1; }
+          body {
+            font-family: 'Times New Roman', serif;
+            font-size: 14pt;
+            line-height: 1.2;
+            color: black;
+          }
+          p { margin: 0 0 4pt 0; }
+          table { border-collapse: collapse; width: 100%; }
+        </style>
+      </head>
+      <body>
+        <div class="Section1">
+          <!-- Header Table -->
+          <table style="width: 100%; border: none; margin-bottom: 6pt;">
+            <tr>
+              <td style="width: 48%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
+                ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG<br/>
+                <b>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</b><br/>
+                *<br/>
+                <span style="font-size: 13pt;">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</span>
+              </td>
+              <td style="width: 52%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
+                <b>ĐẢNG CỘNG SẢN VIỆT NAM</b><br/><br/>
+                <i>An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}</i>
+              </td>
+            </tr>
+          </table>
 
-          // Title
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 120, after: 0, line: 240 },
-            children: [
-              new TextRun({ text: "THÔNG BÁO", bold: true, font: "Times New Roman", size: 24 })
-            ]
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 0, after: 0, line: 240 },
-            children: [
-              new TextRun({ text: `Lịch sinh hoạt lệ tháng ${selectedMonth}/${selectedYear} của các chi bộ trực thuộc`, bold: true, font: "Times New Roman", size: 22 })
-            ]
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 0, after: 60, line: 240 },
-            children: [
-              new TextRun({ text: "-----", font: "Times New Roman", size: 20 })
-            ]
-          }),
+          <!-- Title -->
+          <div style="text-align: center; margin: 6pt 0 4pt 0;">
+            <p style="font-size: 14pt; font-weight: bold; margin: 0;">THÔNG BÁO</p>
+            <p style="font-size: 14pt; font-weight: bold; margin: 0;">Lịch sinh hoạt lệ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear} của các chi bộ trực thuộc</p>
+            <p style="font-size: 12pt; margin: 0;">-----</p>
+          </div>
 
-          // Content Paragraphs
-          new Paragraph({
-            indent: { firstLine: 400 },
-            spacing: { before: 40, after: 20, line: 240 },
-            children: [
-              new TextRun({ text: "Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.", font: "Times New Roman", size: 21 })
-            ]
-          }),
-          new Paragraph({
-            indent: { firstLine: 400 },
-            spacing: { before: 0, after: 60, line: 240 },
-            children: [
-              new TextRun({ text: `Theo đăng ký lịch sinh hoạt lệ chi bộ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:`, font: "Times New Roman", size: 21 })
-            ]
-          }),
+          <!-- Paragraphs Cỡ chữ 14 chuẩn quy định -->
+          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-bottom: 4pt;">
+            Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
+          </p>
+          <p style="font-size: 14pt; text-indent: 30pt; text-align: justify; margin-bottom: 6pt;">
+            Theo đăng ký lịch sinh hoạt lệ chi bộ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
+          </p>
 
-          // Main Schedule Table
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [
-              // Header Row
-              new TableRow({
-                children: [
-                  new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "STT", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Chi bộ", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "SL", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ width: { size: 24, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Thời gian", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ width: { size: 18, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Địa điểm", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Bí thư, điện thoại", bold: true, font: "Times New Roman", size: 19 })] })] })
-                ]
-              }),
-              // 13 Branch Rows
-              ...currentMonthSchedules.map((item, idx) => (
-                new TableRow({
-                  children: [
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: String(idx + 1), font: "Times New Roman", size: 18 })] })] }),
-                    new TableCell({ children: [new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.chiBo, font: "Times New Roman", size: 18 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: String(item.sl), font: "Times New Roman", size: 18 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: item.thoiGian, font: "Times New Roman", size: 18 })] })] }),
-                    new TableCell({ children: [new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.diaDiem, font: "Times New Roman", size: 18 })] })] }),
-                    new TableCell({ children: [
-                      new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.biThu, font: "Times New Roman", size: 18 })] }),
-                      new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.sdt || '', font: "Times New Roman", size: 18 })] })
-                    ] })
-                  ]
-                })
-              )),
-              // Total Row
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "TỔNG SỐ", bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(totalDv), bold: true, font: "Times New Roman", size: 19 })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] })
-                ]
-              })
-            ]
-          }),
+          <!-- 13 Chi bộ Table -->
+          <table style="width: 100%; border: 1px solid black; font-size: 11pt; margin-top: 4pt; margin-bottom: 6pt;">
+            <tr style="text-align: center; font-weight: bold; background-color: #f2f2f2;">
+              <td style="border: 1px solid black; padding: 4px; width: 6%;">S<br/>TT</td>
+              <td style="border: 1px solid black; padding: 4px; width: 22%;">Chi bộ</td>
+              <td style="border: 1px solid black; padding: 4px; width: 8%;">Số<br/>lượng</td>
+              <td style="border: 1px solid black; padding: 4px; width: 22%;">Thời<br/>gian</td>
+              <td style="border: 1px solid black; padding: 4px; width: 18%;">Địa điểm</td>
+              <td style="border: 1px solid black; padding: 4px; width: 24%;">Bí thư,<br/>điện thoại</td>
+            </tr>
+            ${tableRows}
+            <tr style="font-weight: bold; text-align: center;">
+              <td colspan="2" style="border: 1px solid black; padding: 4px; text-align: center;">TỔNG SỐ</td>
+              <td style="border: 1px solid black; padding: 4px;">${totalMembersCount}</td>
+              <td style="border: 1px solid black; padding: 4px;"></td>
+              <td style="border: 1px solid black; padding: 4px;"></td>
+              <td style="border: 1px solid black; padding: 4px;"></td>
+            </tr>
+          </table>
 
-          // Footer Table
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-              insideHorizontal: { style: BorderStyle.NONE },
-              insideVertical: { style: BorderStyle.NONE }
-            },
-            rows: [
-              new TableRow({
-                children: [
-                  new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        spacing: { before: 80, after: 0, line: 240 },
-                        children: [
-                          new TextRun({ text: "Nơi nhận:", bold: true, italics: true, font: "Times New Roman", size: 19 }),
-                        ]
-                      }),
-                      new Paragraph({
-                        spacing: { before: 0, after: 0, line: 220 },
-                        children: [
-                          new TextRun({ text: "- Đảng ủy Sở Công Thương;\\n- Bí thư các Chi bộ trực thuộc;\\n- Lưu: Đảng ủy.", italics: true, font: "Times New Roman", size: 18 }),
-                        ]
-                      })
-                    ]
-                  }),
-                  new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { before: 80, after: 0, line: 240 },
-                        children: [
-                          new TextRun({ text: "T/M ĐẢNG ỦY", bold: true, font: "Times New Roman", size: 21, break: 1 }),
-                          new TextRun({ text: "BÍ THƯ", bold: true, font: "Times New Roman", size: 21, break: 1 }),
-                          new TextRun({ text: "", break: 3 }),
-                          new TextRun({ text: "Nguyễn Trung Tiến", bold: true, font: "Times New Roman", size: 22 })
-                        ]
-                      })
-                    ]
-                  })
-                ]
-              })
-            ]
-          })
-        ]
-      }]
-    });
+          <!-- Footer Table -->
+          <table style="width: 100%; border: none; margin-top: 6pt;">
+            <tr>
+              <td style="width: 50%; vertical-align: top; border: none;">
+                <p style="font-size: 12pt; font-weight: bold; font-style: italic; margin: 0;">Nơi nhận:</p>
+                <p style="font-size: 11pt; font-style: italic; line-height: 1.25; margin: 0;">
+                  - Đảng ủy Sở Công Thương;<br/>
+                  - Bí thư các Chi bộ trực thuộc;<br/>
+                  - Lưu: Đảng ủy.
+                </p>
+              </td>
+              <td style="width: 50%; text-align: center; vertical-align: top; border: none;">
+                <p style="font-size: 13pt; font-weight: bold; margin: 0;">T/M ĐẢNG ỦY</p>
+                <p style="font-size: 13pt; font-weight: bold; margin: 0;">BÍ THƯ</p>
+                <div style="height: 50pt;"></div>
+                <p style="font-size: 14pt; font-weight: bold; margin: 0;">Nguyễn Trung Tiến</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
 
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${selectedMonth}. TB_họp chi bộ T${selectedMonth}-${selectedYear}_13 chi bộ.docx`);
+    const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' });
+    saveAs(blob, `${selectedMonth}. TB_họp chi bộ T${selectedMonth}-${selectedYear}_13 chi bộ.doc`);
   };
 
   const handlePrint = () => {
     window.print();
   };
-
-  const totalMembersCount = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
 
   const sampleZaloMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
@@ -755,12 +637,12 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
 
             <div className="flex items-center gap-2.5">
               <button 
-                onClick={handleExportDocx}
+                onClick={handleExportWordDoc}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm transition-all cursor-pointer"
-                title="Tải về file Word (.DOCX) chuẩn 1 trang giống hệt file mẫu gốc"
+                title="Tải về file Word (.DOC) chuẩn 100% mở bằng Microsoft Word không bao giờ lỗi"
               >
                 <FileText className="w-4 h-4" />
-                Tải File Word (.DOCX)
+                Tải File Word (.DOC)
               </button>
 
               <button 
@@ -820,22 +702,22 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </div>
         </header>
 
-        {/* PRINT DOCUMENT FORMAT - Y HỆT MẪU GỐC CỦA ĐỒNG CHÍ, KHÍT 1 TRANG A4 */}
-        <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13px', lineHeight: '1.25' }}>
+        {/* PRINT DOCUMENT FORMAT - CỠ CHỮ CĂN CỨ 14PT CHUẨN THỂ THỨC VĂN BẢN ĐẢNG, KHÍT 1 TRANG A4 */}
+        <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13pt', lineHeight: '1.2' }}>
           {/* Header 2 columns */}
-          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '6px' }}>
+          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '4pt' }}>
             <tbody>
               <tr style={{ border: 'none' }}>
                 <td style={{ width: '48%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12px' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
-                  <div style={{ fontSize: '11px', margin: '1px 0' }}>*</div>
-                  <div style={{ fontSize: '12.5px' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
+                  <div style={{ fontSize: '12pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                  <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                  <div style={{ fontSize: '11pt', margin: '1px 0' }}>*</div>
+                  <div style={{ fontSize: '13pt' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
                 </td>
                 <td style={{ width: '52%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
-                  <div style={{ height: '14px' }}></div>
-                  <div style={{ fontSize: '12.5px', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                  <div style={{ height: '14pt' }}></div>
+                  <div style={{ fontSize: '13pt', fontStyle: 'italic' }}>
                     An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
                   </div>
                 </td>
@@ -844,24 +726,24 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </table>
 
           {/* Title */}
-          <div style={{ textAlign: 'center', margin: '4px 0 2px 0' }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>THÔNG BÁO</div>
-            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
+          <div style={{ textAlign: 'center', margin: '4pt 0 2pt 0' }}>
+            <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>THÔNG BÁO</div>
+            <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>
               Lịch sinh hoạt lệ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear} của các chi bộ trực thuộc
             </div>
-            <div style={{ fontSize: '11px' }}>-----</div>
+            <div style={{ fontSize: '12pt' }}>-----</div>
           </div>
 
-          {/* Paragraphs */}
-          <div style={{ textIndent: '30px', textAlign: 'justify', marginBottom: '2px', fontSize: '12.5px' }}>
+          {/* Paragraphs Cỡ chữ 14pt chuẩn theo yêu cầu */}
+          <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '2pt', fontSize: '14pt', lineHeight: '1.25' }}>
             Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
           </div>
-          <div style={{ textIndent: '30px', textAlign: 'justify', marginBottom: '4px', fontSize: '12.5px' }}>
+          <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '4pt', fontSize: '14pt', lineHeight: '1.25' }}>
             Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
           </div>
 
           {/* 13 Branch Schedule Table */}
-          <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11.5px', margin: '3px 0' }}>
+          <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11pt', margin: '3pt 0' }}>
             <thead>
               <tr style={{ textAlign: 'center', fontWeight: 'bold' }}>
                 <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>S<br />TT</th>
@@ -874,7 +756,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </thead>
             <tbody>
               {currentMonthSchedules.map((item, idx) => (
-                <tr key={idx} style={{ height: '21px' }}>
+                <tr key={idx} style={{ height: '20px' }}>
                   <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
                   <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
@@ -882,7 +764,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                   <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.diaDiem}</td>
                   <td style={{ border: '1px solid black', padding: '2px 4px', lineHeight: '1.15' }}>
                     <div>{item.biThu}</div>
-                    <div style={{ fontSize: '10.5px' }}>{item.sdt}</div>
+                    <div style={{ fontSize: '10pt' }}>{item.sdt}</div>
                   </td>
                 </tr>
               ))}
@@ -897,22 +779,22 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </table>
 
           {/* Footer Table */}
-          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '6px' }}>
+          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '4pt' }}>
             <tbody>
               <tr style={{ border: 'none' }}>
                 <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '11.5px', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
-                  <div style={{ fontSize: '11px', fontStyle: 'italic', lineHeight: '1.25' }}>
+                  <div style={{ fontSize: '12pt', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
+                  <div style={{ fontSize: '11pt', fontStyle: 'italic', lineHeight: '1.25' }}>
                     - Đảng ủy Sở Công Thương;<br />
                     - Bí thư các Chi bộ trực thuộc;<br />
                     - Lưu: Đảng ủy.
                   </div>
                 </td>
                 <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>BÍ THƯ</div>
-                  <div style={{ height: '45px' }}></div>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
+                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
+                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>BÍ THƯ</div>
+                  <div style={{ height: '40pt' }}></div>
+                  <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
                 </td>
               </tr>
             </tbody>
@@ -997,12 +879,12 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                   </button>
 
                   <button
-                    onClick={handleExportDocx}
+                    onClick={handleExportWordDoc}
                     className="px-3.5 py-2 rounded-md bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    title="Xuất file Word .DOCX chuẩn 1 trang A4 giống hệt file gốc"
+                    title="Xuất file Word .DOC chuẩn 100% mở bằng MS Word không bao giờ bị lỗi"
                   >
                     <FileText className="w-4 h-4" />
-                    Tải File Word (.DOCX)
+                    Tải File Word (.DOC)
                   </button>
 
                   <button
