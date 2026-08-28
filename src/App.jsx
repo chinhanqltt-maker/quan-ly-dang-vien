@@ -146,7 +146,16 @@ export default function App() {
 
   const currentMonthSchedules = useMemo(() => {
     if (meetingSchedules[currentKey]) {
-      return meetingSchedules[currentKey];
+      // Đảm bảo luôn giữ đúng Bí thư, Số điện thoại và Địa điểm từ danh mục chuẩn nếu bị thiếu
+      return meetingSchedules[currentKey].map(item => {
+        const b = branchDetails.find(br => br.id === item.chiBoId) || {};
+        return {
+          ...item,
+          biThu: item.biThu || b.biThu || '',
+          sdt: item.sdt || b.sdt || '',
+          diaDiem: item.diaDiem || b.diaDiem || ''
+        };
+      });
     }
     return branchDetails.map(b => ({
       chiBoId: b.id,
