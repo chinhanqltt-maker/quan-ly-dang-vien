@@ -561,13 +561,9 @@ export default function App() {
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 80, after: 0, line: 240 },
                         children: [
-                          new TextRun({ text: "T/M ĐẢNG ỦY
-", bold: true, font: "Times New Roman", size: 21 }),
-                          new TextRun({ text: "BÍ THƯ
-
-
-
-", bold: true, font: "Times New Roman", size: 21 }),
+                          new TextRun({ text: "T/M ĐẢNG ỦY", bold: true, font: "Times New Roman", size: 21, break: 1 }),
+                          new TextRun({ text: "BÍ THƯ", bold: true, font: "Times New Roman", size: 21, break: 1 }),
+                          new TextRun({ text: "", break: 3 }),
                           new TextRun({ text: "Nguyễn Trung Tiến", bold: true, font: "Times New Roman", size: 22 })
                         ]
                       })
