@@ -466,7 +466,12 @@ export default function App() {
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = "";
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const sampleZaloMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
