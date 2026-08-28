@@ -412,7 +412,7 @@ export default function App() {
               </td>
               <td style="width: 44%; text-align: center; vertical-align: top; border: none; font-size: 12pt; white-space: nowrap;">
                 <b>ĐẢNG CỘNG SẢN VIỆT NAM</b><br/><br/>
-                <i>An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}</i>
+                <i>An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng ${String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, '0')} năm ${selectedMonth === 1 ? selectedYear - 1 : selectedYear}</i>
               </td>
             </tr>
           </table>
@@ -434,7 +434,7 @@ export default function App() {
 
           <!-- 13 Chi bộ Table -->
           <table style="width: 100%; border: 1px solid black; font-size: 11pt; margin-top: 4pt; margin-bottom: 6pt;">
-            <tr style="text-align: center; font-weight: bold; background-color: #f2f2f2;">
+            <tr style="text-align: center; font-weight: bold; font-size: 13pt; background-color: #f2f2f2;">
               <td style="border: 1px solid black; padding: 4px; width: 6%;">S<br/>TT</td>
               <td style="border: 1px solid black; padding: 4px; width: 22%;">Chi bộ</td>
               <td style="border: 1px solid black; padding: 4px; width: 8%;">Số<br/>lượng</td>
@@ -547,6 +547,8 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     <input
                       type="date"
                       required
+                      min={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
+                      max={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${new Date(selectedYear, selectedMonth, 0).getDate()}`}
                       value={teamDate}
                       onChange={(e) => {
                         setTeamDate(e.target.value);
@@ -738,7 +740,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                   <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
                   <div style={{ height: '12pt' }}></div>
                   <div style={{ fontSize: '12pt', fontStyle: 'italic' }}>
-                    An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
+                    An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, '0')} năm {selectedMonth === 1 ? selectedYear - 1 : selectedYear}
                   </div>
                 </td>
               </tr>
@@ -765,7 +767,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           {/* 13 Branch Schedule Table */}
           <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11pt', margin: '3pt 0' }}>
             <thead>
-              <tr style={{ textAlign: 'center', fontWeight: 'bold' }}>
+              <tr style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '13pt' }}>
                 <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>S<br />TT</th>
                 <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Chi bộ</th>
                 <th style={{ border: '1px solid black', padding: '3px 2px', width: '8%' }}>Số<br />lượng</th>
@@ -973,6 +975,8 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="date"
+                                min={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
+                                max={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${new Date(selectedYear, selectedMonth, 0).getDate()}`}
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     const [yyyy, mm, dd] = e.target.value.split('-');
