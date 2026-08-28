@@ -549,9 +549,7 @@ export default function App() {
                       new Paragraph({
                         spacing: { before: 0, after: 0, line: 220 },
                         children: [
-                          new TextRun({ text: "- Đảng ủy Sở Công Thương;
-- Bí thư các Chi bộ trực thuộc;
-- Lưu: Đảng ủy.", italics: true, font: "Times New Roman", size: 18 }),
+                          new TextRun({ text: "- Đảng ủy Sở Công Thương;\\n- Bí thư các Chi bộ trực thuộc;\\n- Lưu: Đảng ủy.", italics: true, font: "Times New Roman", size: 18 }),
                         ]
                       })
                     ]
