@@ -37,9 +37,12 @@ import {
   CheckCheck,
   Share2,
   Copy,
-  ExternalLink,
   Check,
-  MapPin
+  MapPin,
+  Archive,
+  Save,
+  BookOpen,
+  FileCheck2
 } from 'lucide-react';
 
 export default function App() {
@@ -52,35 +55,43 @@ export default function App() {
 
   // Core Data States
   const [members, setMembers] = useState(() => {
-    const saved = localStorage.getItem('qltt_party_members_v2');
+    const saved = localStorage.getItem('qltt_party_members_v3');
     return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
   });
 
   const [movements, setMovements] = useState(() => {
-    const saved = localStorage.getItem('qltt_party_movements_v2');
+    const saved = localStorage.getItem('qltt_party_movements_v3');
     return saved ? JSON.parse(saved) : INITIAL_MOVEMENTS;
   });
 
   const [chiBoList] = useState(INITIAL_CHI_BO);
   const [branchDetails] = useState(INITIAL_BRANCH_DETAILS);
 
-  const [evaluations, setEvaluations] = useState(() => {
-    const saved = localStorage.getItem('qltt_party_evaluations_v2');
-    return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
-  });
-
-  const [fees, setFees] = useState(() => {
-    const saved = localStorage.getItem('qltt_party_fees_v2');
-    return saved ? JSON.parse(saved) : INITIAL_FEES;
-  });
-
-  // Lịch sinh hoạt 13 chi bộ theo tháng
+  // Lịch sinh hoạt 13 chi bộ theo tháng (Bảng Đăng Ký & Thông Báo Lịch Họp)
   const [meetingSchedules, setMeetingSchedules] = useState(() => {
-    const saved = localStorage.getItem('qltt_party_meetings');
+    const saved = localStorage.getItem('qltt_party_meetings_v3');
     return saved ? JSON.parse(saved) : INITIAL_MEETING_SCHEDULES;
   });
 
-  const [activeTab, setActiveTab] = useState('meetings');
+  // Biểu Đánh Giá Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Hằng Tháng (ĐGXL)
+  const [dgxlData, setDgxlData] = useState(() => {
+    const saved = localStorage.getItem('qltt_party_dgxl_v3');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Biểu Tổng Hợp Số Liệu Báo Cáo 06 Tháng / Năm (Số liệu chi tiết từng chi bộ)
+  const [sixMonthsReports, setSixMonthsReports] = useState(() => {
+    const saved = localStorage.getItem('qltt_party_sixmonths_v3');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Lưu trữ Lịch sử Thông Báo Lịch Họp đã ban hành (Archive để sau này coi lại)
+  const [archivedNotices, setArchivedNotices] = useState(() => {
+    const saved = localStorage.getItem('qltt_party_archived_notices');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'dgxl', 'sixmonths', 'dashboard', 'members', 'archive'
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(8);
 
@@ -100,9 +111,10 @@ export default function App() {
   const [teamDate, setTeamDate] = useState('');
   const [teamDayOfWeek, setTeamDayOfWeek] = useState('thứ Hai');
   const [teamLocation, setTeamLocation] = useState(initialBranchObj.diaDiem);
+  const [teamNote, setTeamNote] = useState('');
   const [teamSubmitted, setTeamSubmitted] = useState(false);
 
-  // Khi chọn Chi bộ khác -> Tự động điền Địa điểm mặc định của Chi bộ đó
+  // Tự động gán địa điểm mặc định khi chọn Chi bộ
   useEffect(() => {
     const br = branchDetails.find(b => b.id === teamSelectChiBo);
     if (br) {
@@ -110,50 +122,30 @@ export default function App() {
     }
   }, [teamSelectChiBo, branchDetails]);
 
-  // Modal Member
-  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState(null);
-  const [memberFormData, setMemberFormData] = useState({
-    hoTen: '',
-    gioiTinh: 'Nam',
-    ngaySinh: '',
-    soTheDang: '',
-    soLyLich: '',
-    chiBo: INITIAL_CHI_BO[0],
-    chucVuDang: 'Đảng viên',
-    chucVuChinhQuyen: 'Kiểm soát viên',
-    trinhDoChuyenMon: 'Đại học',
-    lyLuanChinhTri: 'Sơ cấp',
-    ngayVaoDang: '',
-    ngayChinhThuc: '',
-    loaiDangVien: 'Chính thức',
-    trangThai: 'Đang sinh hoạt',
-    soDienThoai: '',
-    email: '',
-    queQuan: ''
-  });
-
+  // Save to LocalStorage
   useEffect(() => {
-    localStorage.setItem('qltt_party_members_v2', JSON.stringify(members));
+    localStorage.setItem('qltt_party_members_v3', JSON.stringify(members));
   }, [members]);
-
   useEffect(() => {
-    localStorage.setItem('qltt_party_movements_v2', JSON.stringify(movements));
+    localStorage.setItem('qltt_party_movements_v3', JSON.stringify(movements));
   }, [movements]);
-
   useEffect(() => {
-    localStorage.setItem('qltt_party_evaluations_v2', JSON.stringify(evaluations));
-  }, [evaluations]);
-
-  useEffect(() => {
-    localStorage.setItem('qltt_party_fees_v2', JSON.stringify(fees));
-  }, [fees]);
-
-  useEffect(() => {
-    localStorage.setItem('qltt_party_meetings', JSON.stringify(meetingSchedules));
+    localStorage.setItem('qltt_party_meetings_v3', JSON.stringify(meetingSchedules));
   }, [meetingSchedules]);
+  useEffect(() => {
+    localStorage.setItem('qltt_party_dgxl_v3', JSON.stringify(dgxlData));
+  }, [dgxlData]);
+  useEffect(() => {
+    localStorage.setItem('qltt_party_sixmonths_v3', JSON.stringify(sixMonthsReports));
+  }, [sixMonthsReports]);
+  useEffect(() => {
+    localStorage.setItem('qltt_party_archived_notices', JSON.stringify(archivedNotices));
+  }, [archivedNotices]);
 
+  // Key tháng hiện tại
   const currentKey = `${selectedYear}-${selectedMonth}`;
+
+  // Dữ liệu Lịch họp tháng hiện tại
   const currentMonthSchedules = useMemo(() => {
     if (meetingSchedules[currentKey]) {
       return meetingSchedules[currentKey];
@@ -166,11 +158,12 @@ export default function App() {
       diaDiem: b.diaDiem,
       biThu: b.biThu,
       sdt: b.sdt,
-      trangThai: 'Chờ đăng ký'
+      trangThai: 'Chờ đăng ký',
+      ghiChu: '' // Ghi chú biến động: miễn sinh hoạt, chuyển đảng tạm thời, v.v.
     }));
   }, [meetingSchedules, currentKey, branchDetails]);
 
-  // Handler cập nhật lịch họp của 1 Chi bộ
+  // Cập nhật lịch họp
   const handleUpdateSchedule = (chiBoId, field, value) => {
     const updatedList = currentMonthSchedules.map(item => {
       if (item.chiBoId === chiBoId) {
@@ -182,15 +175,14 @@ export default function App() {
       }
       return item;
     });
-
     setMeetingSchedules(prev => ({
       ...prev,
       [currentKey]: updatedList
     }));
   };
 
-  // Duyệt thống nhất toàn bộ lịch họp với Lãnh đạo
-  const handleApproveAllSchedules = () => {
+  // 1. Phê duyệt Thống nhất Lãnh đạo & Tự động Lưu vào Kho Lưu Trữ (Archive)
+  const handleApproveAndArchive = () => {
     const updatedList = currentMonthSchedules.map(item => ({
       ...item,
       trangThai: 'Đã thống nhất'
@@ -199,10 +191,97 @@ export default function App() {
       ...prev,
       [currentKey]: updatedList
     }));
-    alert(`Đã duyệt thống nhất lịch sinh hoạt tháng ${selectedMonth}/${selectedYear} với Lãnh đạo! Bây giờ đồng chí có thể bấm 'In Thông Báo Trình Ký'.`);
+
+    // Lưu một bản ghi lịch sử Thông báo vào Kho lưu trữ
+    const newArchiveItem = {
+      id: 'TB_' + currentKey + '_' + Date.now(),
+      nam: selectedYear,
+      thang: selectedMonth,
+      ngayBanHanh: new Date().toLocaleDateString('vi-VN'),
+      nguoiKy: 'Bí thư Nguyễn Trung Tiến',
+      tongSoDV: updatedList.reduce((sum, i) => sum + (Number(i.sl) || 0), 0),
+      chiTiet: updatedList
+    };
+
+    // Kiểm tra nếu đã có bản lưu tháng này thì ghi đè, nếu chưa thì thêm mới
+    setArchivedNotices(prev => {
+      const filtered = prev.filter(a => !(a.nam === selectedYear && a.thang === selectedMonth));
+      return [newArchiveItem, ...filtered];
+    });
+
+    alert(`Đã duyệt thống nhất với Lãnh đạo và tự động lưu vào 'Kho Lưu Trữ Thông Báo'! Đồng chí có thể bấm 'In Thông Báo Trình Ký'.`);
   };
 
-  // Đội tự gửi đăng ký
+  // 2. Dữ liệu ĐGXL (Đánh giá xếp loại chất lượng sinh hoạt chi bộ hằng tháng)
+  const currentMonthDGXL = useMemo(() => {
+    if (dgxlData[currentKey]) {
+      return dgxlData[currentKey];
+    }
+    return branchDetails.map(b => {
+      const schedule = currentMonthSchedules.find(s => s.chiBoId === b.id) || {};
+      return {
+        chiBoId: b.id,
+        chiBo: b.name,
+        sl: b.sl,
+        ngayHop: schedule.thoiGian || 'Chưa họp',
+        diemDG: 100,
+        mucXepLoai: 'Tốt', // 'Tốt', 'Khá', 'Trung bình', 'Kém'
+        ghiChuTruDiem: schedule.ghiChu || ''
+      };
+    });
+  }, [dgxlData, currentKey, branchDetails, currentMonthSchedules]);
+
+  const handleUpdateDGXL = (chiBoId, field, value) => {
+    const updated = currentMonthDGXL.map(item => {
+      if (item.chiBoId === chiBoId) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    });
+    setDgxlData(prev => ({
+      ...prev,
+      [currentKey]: updated
+    }));
+  };
+
+  // 3. Dữ liệu Báo cáo 06 Tháng Năm 2026 (12 Cột nghiệp vụ chuẩn)
+  const sixMonthsData = useMemo(() => {
+    const sixKey = `${selectedYear}-6M`;
+    if (sixMonthsReports[sixKey]) {
+      return sixMonthsReports[sixKey];
+    }
+    return branchDetails.map(b => ({
+      chiBoId: b.id,
+      chiBo: b.name,
+      dangSo: b.sl,
+      soLgDuHop: `${b.sl}/${b.sl} (Đạt 100%)`,
+      phatBieuYkien: '100% đảng viên phát biểu',
+      danVanKheo: `Thực hiện mô hình Dân vận khéo năm ${selectedYear}`,
+      hocTapChuyenDe: `Học tập Bác Hồ, Bác Tôn về chăm lo đời sống Nhân dân`,
+      docBaiViet: 'Sinh hoạt các mẩu chuyện kể về Bác Hồ',
+      khSinhHoatCD: 'Tổ chức sinh hoạt chuyên đề Quý I, Quý II đúng quy định',
+      knd: '0',
+      ktgs: `Thực hiện Kế hoạch kiểm tra, giám sát năm ${selectedYear}`,
+      ghiChu: '',
+      khac: ''
+    }));
+  }, [sixMonthsReports, selectedYear, branchDetails]);
+
+  const handleUpdateSixMonths = (chiBoId, field, value) => {
+    const sixKey = `${selectedYear}-6M`;
+    const updated = sixMonthsData.map(item => {
+      if (item.chiBoId === chiBoId) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    });
+    setSixMonthsReports(prev => ({
+      ...prev,
+      [sixKey]: updated
+    }));
+  };
+
+  // Đội tự gửi đăng ký qua Link
   const handleTeamSubmitRegistration = (e) => {
     e.preventDefault();
     if (!teamDate) {
@@ -217,9 +296,52 @@ export default function App() {
 
     handleUpdateSchedule(teamSelectChiBo, 'thoiGian', timeFormatted);
     handleUpdateSchedule(teamSelectChiBo, 'diaDiem', loc);
+    if (teamNote) {
+      handleUpdateSchedule(teamSelectChiBo, 'ghiChu', teamNote);
+    }
 
     setTeamSubmitted(true);
     setTimeout(() => setTeamSubmitted(false), 5000);
+  };
+
+  // Xuất Excel Biểu ĐGXL hoặc Biểu 06 Tháng
+  const handleExportDGXLToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(currentMonthDGXL.map((d, idx) => ({
+      'STT': idx + 1,
+      'Tên đơn vị': d.chiBo,
+      'Số lượng đảng viên': d.sl,
+      'Ngày họp chi bộ': d.ngayHop,
+      'Kết quả số điểm đánh giá': d.diemDG,
+      'Tốt': d.mucXepLoai === 'Tốt' ? 'X' : '',
+      'Khá': d.mucXepLoai === 'Khá' ? 'X' : '',
+      'Trung bình': d.mucXepLoai === 'Trung bình' ? 'X' : '',
+      'Kém': d.mucXepLoai === 'Kém' ? 'X' : '',
+      'Ghi chú (thuyết minh điểm trừ)': d.ghiChuTruDiem
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `DGXL_T${selectedMonth}_${selectedYear}`);
+    XLSX.writeFile(wb, `DGXL_Sinh_Hoat_Chi_Bo_T${selectedMonth}_${selectedYear}.xlsx`);
+  };
+
+  const handleExportSixMonthsToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(sixMonthsData.map((d, idx) => ({
+      'STT': idx + 1,
+      'Tên chi bộ': d.chiBo,
+      'Đảng số': d.dangSo,
+      'Số lượng ĐV dự sinh hoạt lệ': d.soLgDuHop,
+      'Phát biểu ý kiến': d.phatBieuYkien,
+      'Dân vận khéo': d.danVanKheo,
+      'Học tập Chuyên đề': d.hocTapChuyenDe,
+      'Đọc bài viết': d.docBaiViet,
+      'KH Sinh hoạt CĐ': d.khSinhHoatCD,
+      'KNĐ': d.knd,
+      'KT GS': d.ktgs,
+      'Ghi chú': d.ghiChu,
+      'Khác': d.khac
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `TongHop_06Thang_${selectedYear}`);
+    XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_06_Thang_${selectedYear}.xlsx`);
   };
 
   const handlePrint = () => {
@@ -228,7 +350,6 @@ export default function App() {
 
   const totalMembersCount = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
 
-  // Mẫu tin nhắn Zalo soạn sẵn
   const sampleZaloMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
 Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đăng ký lịch sinh hoạt lệ tháng ${selectedMonth}/${selectedYear} trước ngày 20 để Đảng ủy tổng hợp xin ý kiến Lãnh đạo và ban hành Thông báo chính thức.
@@ -272,10 +393,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                   <label className="block text-xs font-bold text-slate-700 mb-1">1. Chọn Chi bộ trực thuộc (*)</label>
                   <select
                     value={teamSelectChiBo}
-                    onChange={(e) => {
-                      const cid = Number(e.target.value);
-                      setTeamSelectChiBo(cid);
-                    }}
+                    onChange={(e) => setTeamSelectChiBo(Number(e.target.value))}
                     className="w-full p-2.5 border rounded-lg text-sm font-bold text-red-700 bg-red-50/50 border-red-200"
                   >
                     {branchDetails.map(b => (
@@ -320,20 +438,32 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       <MapPin className="w-3.5 h-3.5 text-red-600" />
                       3. Địa điểm tổ chức sinh hoạt
                     </label>
-                    <span className="text-[11px] text-emerald-600 font-semibold">(Mặc định theo đơn vị)</span>
+                    <span className="text-[11px] text-emerald-600 font-semibold">(Mặc định theo dữ liệu của Đội)</span>
                   </div>
                   <input
                     type="text"
                     required
                     value={teamLocation}
                     onChange={(e) => setTeamLocation(e.target.value)}
-                    placeholder="Mặc định: VP Chi cục / Đội QLTT / Hội trường B..."
                     className="w-full p-2.5 border rounded-lg text-sm bg-white font-medium"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    4. Ghi chú biến động đảng viên (nếu có)
+                  </label>
+                  <input
+                    type="text"
+                    value={teamNote}
+                    onChange={(e) => setTeamNote(e.target.value)}
+                    placeholder="VD: Có 01 đ/c miễn sinh hoạt hoặc chuyển công tác tạm thời..."
+                    className="w-full p-2.5 border rounded-lg text-xs bg-white"
+                  />
+                </div>
+
                 <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                  📌 <b>Lưu ý:</b> Đề nghị các Chi bộ hoàn thành đăng ký trước ngày 20 hàng tháng để cán bộ tổng hợp báo cáo Đảng ủy.
+                  📌 <b>Lưu ý:</b> Đề nghị các Chi bộ hoàn thành đăng ký trước ngày 20 hàng tháng.
                 </div>
 
                 <button
@@ -360,7 +490,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
     );
   }
 
-  // GIAO DIỆN QUẢN TRỊ CHÍNH (CÁN BỘ TỔNG HỢP)
+  // GIAO DIỆN QUẢN TRỊ CHÍNH DÀNH CHO CÁN BỘ TỔNG HỢP
   return (
     <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
       <div className="bg-[var(--bg-main)] text-[var(--text-main)] min-h-screen flex flex-col font-sans">
@@ -375,13 +505,13 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-base font-bold tracking-tight text-[var(--text-main)]">
-                    ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG
+                    ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG AN GIANG
                   </h1>
                   <span className="badge bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800">
-                    Tổng hợp 13 Chi bộ
+                    Cán bộ tổng hợp
                   </span>
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">Quy trình tạo thông báo, gửi link ngày 20 cho các Đội & phê duyệt trình ký</p>
+                <p className="text-xs text-[var(--text-muted)]">Quy trình Đăng ký ngày 20, Duyệt ngày 25, Lưu thông báo, ĐGXL hằng tháng & Báo cáo 06 Tháng</p>
               </div>
             </div>
 
@@ -413,15 +543,15 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* MAIN TABS */}
           <div className="max-w-7xl mx-auto flex gap-6 mt-3 border-t border-[var(--border-color)] pt-2 overflow-x-auto">
             {[
-              { id: 'meetings', label: '📅 Lịch Sinh Hoạt & Đăng Ký (Ngày 20)', icon: Calendar },
-              { id: 'dashboard', label: '📊 Tổng quan Đảng bộ (157 ĐV)', icon: Sparkles },
-              { id: 'members', label: '👥 Danh sách Đảng viên', icon: Users },
-              { id: 'movements', label: '📈 Biến động Tăng/Giảm', icon: TrendingUp },
-              { id: 'fees', label: '💳 Đóng Đảng phí 12 Tháng', icon: CreditCard },
-              { id: 'evaluations', label: '🏆 Đánh giá & Xếp loại', icon: Award }
+              { id: 'meetings', label: '📅 1. Lịch Họp & Duyệt Trình Ký (Ngày 20-25)', icon: Calendar },
+              { id: 'archive', label: '📁 2. Kho Lưu Trữ Thông Báo Lịch Họp', icon: Archive },
+              { id: 'dgxl', label: '⭐ 3. Đánh Giá Xếp Loại Hằng Tháng (ĐGXL)', icon: FileCheck2 },
+              { id: 'sixmonths', label: '📊 4. Biểu Tổng Hợp 06 Tháng / Năm', icon: BookOpen },
+              { id: 'dashboard', label: '📈 5. Tổng quan Đảng bộ (157 ĐV)', icon: Sparkles },
+              { id: 'members', label: '👥 6. Danh sách Đảng viên', icon: Users }
             ].map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -520,10 +650,10 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </div>
         </div>
 
-        {/* MAIN BODY */}
+        {/* MAIN BODY CONTENT */}
         <main className="max-w-7xl mx-auto p-6 flex-1 w-full">
 
-          {/* TAB: LỊCH HỌP */}
+          {/* TAB 1: LỊCH HỌP & DUYỆT TRÌNH KÝ */}
           {activeTab === 'meetings' && (
             <div className="space-y-6">
               
@@ -534,11 +664,11 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     <div className="flex items-center gap-2">
                       <Clock className="w-5 h-5 text-amber-600" />
                       <h3 className="text-base font-bold text-[var(--text-main)]">
-                        Quy trình Quản lý Lịch họp Chi bộ định kỳ (Ngày 20 hàng tháng)
+                        Quy trình Quản lý Lịch họp Chi bộ định kỳ (Ngày 20 - 25 hàng tháng)
                       </h3>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      1. Bấm <b>'Gửi Link Đăng Ký'</b> gửi Zalo các Đội $ightarrow$ 2. Đội tự chọn ngày (Địa điểm đã mặc định chuẩn) $ightarrow$ 3. Trình Lãnh đạo thống nhất $ightarrow$ 4. Bấm In trình ký Bí thư.
+                      1. Ngày 20 gửi link Zalo cho các Đội $ightarrow$ 2. Đội tự chọn ngày $ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $ightarrow$ 5. In trình ký Bí thư.
                     </p>
                   </div>
 
@@ -585,16 +715,16 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     className="px-3.5 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
                     <Share2 className="w-4 h-4" />
-                    Lấy Link Gửi Các Đội
+                    Gửi Link Zalo (Ngày 20)
                   </button>
 
                   <button
-                    onClick={handleApproveAllSchedules}
+                    onClick={handleApproveAndArchive}
                     className="px-3.5 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    title="Đánh dấu lãnh đạo đã đồng ý thông nhất toàn bộ"
+                    title="Lãnh đạo đồng ý thống nhất và tự động lưu vào Kho lưu trữ để sau này coi lại"
                   >
-                    <CheckCheck className="w-4 h-4" />
-                    Lãnh đạo đã Thống nhất
+                    <Save className="w-4 h-4" />
+                    Lãnh đạo Thống nhất & Lưu File
                   </button>
 
                   <button
@@ -616,10 +746,10 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                         <th className="w-12 text-center">STT</th>
                         <th>Chi bộ</th>
                         <th className="w-16 text-center">Số lượng ĐV</th>
-                        <th className="w-64">Thời gian sinh hoạt (Đăng ký)</th>
-                        <th>Địa điểm (Mặc định chuẩn)</th>
+                        <th className="w-60">Thời gian sinh hoạt (Đăng ký)</th>
+                        <th>Địa điểm (Mặc định)</th>
                         <th>Bí thư Chi bộ</th>
-                        <th>Số điện thoại</th>
+                        <th className="w-64">Ghi chú biến động đảng viên</th>
                         <th className="text-center">Trạng thái</th>
                       </tr>
                     </thead>
@@ -653,8 +783,19 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                               className="text-xs font-medium"
                             />
                           </td>
-                          <td className="font-semibold text-xs">{item.biThu}</td>
-                          <td className="font-mono text-xs text-[var(--text-muted)]">{item.sdt}</td>
+                          <td className="font-semibold text-xs">
+                            <div>{item.biThu}</div>
+                            <div className="text-[11px] font-mono text-[var(--text-muted)]">{item.sdt}</div>
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              placeholder="VD: Miễn sinh hoạt 01 đ/c..."
+                              value={item.ghiChu || ''}
+                              onChange={(e) => handleUpdateSchedule(item.chiBoId, 'ghiChu', e.target.value)}
+                              className="text-xs text-amber-700 dark:text-amber-300"
+                            />
+                          </td>
                           <td className="text-center">
                             <span className={`badge ${
                               item.trangThai === 'Đã thống nhất' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' :
@@ -674,7 +815,290 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </div>
           )}
 
-          {/* TAB: DASHBOARD */}
+          {/* TAB 2: KHO LƯU TRỮ THÔNG BÁO LỊCH HỌP ĐÃ BAN HÀNH */}
+          {activeTab === 'archive' && (
+            <div className="space-y-6">
+              <div className="card-glass p-5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-main)]">Kho Lưu Trữ Thông Báo Lịch Họp (Theo Từng Tháng)</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Nơi lưu lại các Thông báo lịch sinh hoạt chi bộ đã ban hành để sau này tra cứu, đối chiếu</p>
+                </div>
+              </div>
+
+              {archivedNotices.length === 0 ? (
+                <div className="card-glass p-8 text-center text-[var(--text-muted)] text-sm">
+                  Chưa có thông báo nào được lưu. Khi đồng chí bấm <b>"Lãnh đạo Thống nhất & Lưu File"</b> tại Tab Lịch Họp, hệ thống sẽ tự động lưu vào đây!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {archivedNotices.map((arc, idx) => (
+                    <div key={arc.id} className="card-glass p-5 border-t-4 border-red-500 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="badge bg-red-50 text-red-700 font-bold border border-red-200 text-xs">
+                          Thông Báo Tháng {arc.thang}/{arc.nam}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">Lưu ngày: {arc.ngayBanHanh}</span>
+                      </div>
+
+                      <h4 className="font-bold text-sm text-[var(--text-main)]">
+                        Lịch sinh hoạt lệ 13 Chi bộ trực thuộc Tháng {arc.thang}/{arc.nam}
+                      </h4>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Tổng số đảng viên: <b>{arc.tongSoDV} ĐV</b> • Người ký: <b>{arc.nguoiKy}</b>
+                      </p>
+
+                      <div className="border border-[var(--border-color)] rounded-lg p-2 max-h-48 overflow-y-auto bg-slate-50 dark:bg-slate-900/50 text-xs space-y-1">
+                        {arc.chiTiet.map(c => (
+                          <div key={c.chiBoId} className="flex items-center justify-between border-b border-[var(--border-color)]/50 pb-1">
+                            <span className="font-semibold">{c.chiBo} ({c.sl} ĐV):</span>
+                            <span className="text-blue-600 dark:text-blue-400">{c.thoiGian}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setSelectedMonth(arc.thang);
+                            setSelectedYear(arc.nam);
+                            setActiveTab('meetings');
+                          }}
+                          className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs font-semibold"
+                        >
+                          Mở lại Tháng {arc.thang}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: ĐÁNH GIÁ XẾP LOẠI CHẤT LƯỢNG SINH HOẠT HẰNG THÁNG (ĐGXL) */}
+          {activeTab === 'dgxl' && (
+            <div className="space-y-6">
+              <div className="card-glass p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
+                    Bảng Tổng Hợp Đánh Giá, Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Tháng {selectedMonth}/{selectedYear}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">Theo dõi điểm số, mức xếp loại (Tốt, Khá, TB, Kém) và thuyết minh điểm trừ sau mỗi kỳ họp</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <select 
+                    value={selectedMonth} 
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="w-24 text-xs font-bold"
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
+                  </select>
+
+                  <select 
+                    value={selectedYear} 
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="w-24 text-xs font-bold"
+                  >
+                    {[2025, 2026, 2027].map(y => <option key={y} value={y}>Năm {y}</option>)}
+                  </select>
+
+                  <button 
+                    onClick={handleExportDGXLToExcel}
+                    className="px-3 py-2 bg-emerald-600 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" /> Xuất Excel ĐGXL
+                  </button>
+                </div>
+              </div>
+
+              <div className="card-glass p-1">
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th className="w-12 text-center">STT</th>
+                        <th>Tên đơn vị</th>
+                        <th className="w-20 text-center">Số lượng ĐV</th>
+                        <th>Ngày họp chi bộ</th>
+                        <th className="w-24 text-center">Điểm đánh giá</th>
+                        <th className="w-36 text-center">Mức xếp loại</th>
+                        <th>Ghi chú (Thuyết minh điểm trừ)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentMonthDGXL.map((d, idx) => (
+                        <tr key={d.chiBoId}>
+                          <td className="text-center text-xs text-[var(--text-muted)]">{idx + 1}</td>
+                          <td className="font-bold text-xs">{d.chiBo}</td>
+                          <td className="text-center font-bold text-xs">{d.sl}</td>
+                          <td className="text-xs font-medium text-blue-600 dark:text-blue-400">{d.ngayHop}</td>
+                          <td className="text-center">
+                            <input
+                              type="number"
+                              value={d.diemDG}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'diemDG', Number(e.target.value))}
+                              className="w-16 text-center font-bold text-xs"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <select
+                              value={d.mucXepLoai}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'mucXepLoai', e.target.value)}
+                              className="text-xs font-bold"
+                            >
+                              <option value="Tốt">Tốt</option>
+                              <option value="Khá">Khá</option>
+                              <option value="Trung bình">Trung bình</option>
+                              <option value="Kém">Kém</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              placeholder="Ghi rõ lý do trừ điểm..."
+                              value={d.ghiChuTruDiem}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'ghiChuTruDiem', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: BIỂU TỔNG HỢP SỐ LIỆU BÁO CÁO 06 THÁNG NĂM 2026 */}
+          {activeTab === 'sixmonths' && (
+            <div className="space-y-6">
+              <div className="card-glass p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
+                    Biểu Tổng Hợp Số Liệu Báo Cáo 06 Tháng Năm {selectedYear}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">Tổng hợp ĐV dự sinh hoạt, phát biểu, Dân vận khéo, Chuyên đề, Kiểm tra giám sát của 13 Chi bộ</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleExportSixMonthsToExcel}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Xuất File Báo Cáo 06 Tháng (Excel)
+                  </button>
+                </div>
+              </div>
+
+              <div className="card-glass p-1">
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th className="w-10 text-center">STT</th>
+                        <th className="w-32">Tên chi bộ</th>
+                        <th className="w-16 text-center">Đảng số</th>
+                        <th className="w-36">Số lượng ĐV dự sinh hoạt lệ</th>
+                        <th className="w-36">Phát biểu ý kiến</th>
+                        <th className="w-48">Dân vận khéo</th>
+                        <th className="w-48">Học tập Chuyên đề {selectedYear}</th>
+                        <th className="w-48">Đọc bài viết</th>
+                        <th className="w-48">KH Sinh hoạt CĐ</th>
+                        <th className="w-16 text-center">KNĐ</th>
+                        <th className="w-48">KT GS</th>
+                        <th>Ghi chú</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sixMonthsData.map((d, idx) => (
+                        <tr key={d.chiBoId}>
+                          <td className="text-center text-xs text-[var(--text-muted)]">{idx + 1}</td>
+                          <td className="font-bold text-xs">{d.chiBo}</td>
+                          <td className="text-center font-bold text-red-600 text-xs">{d.dangSo}</td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.soLgDuHop}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'soLgDuHop', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.phatBieuYkien}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'phatBieuYkien', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.danVanKheo}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'danVanKheo', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.hocTapChuyenDe}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'hocTapChuyenDe', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.docBaiViet}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'docBaiViet', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.khSinhHoatCD}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'khSinhHoatCD', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <input
+                              type="text"
+                              value={d.knd}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'knd', e.target.value)}
+                              className="w-12 text-center text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.ktgs}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'ktgs', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={d.ghiChu}
+                              onChange={(e) => handleUpdateSixMonths(d.chiBoId, 'ghiChu', e.target.value)}
+                              className="text-xs"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -760,7 +1184,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </div>
           )}
 
-          {/* TAB: MEMBERS */}
+          {/* TAB 6: MEMBERS */}
           {activeTab === 'members' && (
             <div className="space-y-4">
               <div className="card-glass p-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -787,14 +1211,6 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     </select>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => setIsMemberModalOpen(true)}
-                  className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Thêm Đảng viên
-                </button>
               </div>
 
               <div className="card-glass p-1">
@@ -841,110 +1257,6 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: MOVEMENTS */}
-          {activeTab === 'movements' && (
-            <div className="card-glass p-5 space-y-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">Biến động Tăng/Giảm trong năm</h3>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>STT</th>
-                      <th>Thời gian</th>
-                      <th>Họ và Tên</th>
-                      <th>Chi bộ</th>
-                      <th>Loại biến động</th>
-                      <th>Số Quyết định</th>
-                      <th>Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movements.map((mv, idx) => (
-                      <tr key={mv.id}>
-                        <td className="text-center text-xs text-[var(--text-muted)]">{idx + 1}</td>
-                        <td className="font-bold text-xs">Tháng {mv.thang}/{mv.nam}</td>
-                        <td className="font-semibold">{mv.hoTen}</td>
-                        <td className="text-xs">{mv.chiBo}</td>
-                        <td>
-                          <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {mv.loaiBienDong}
-                          </span>
-                        </td>
-                        <td className="text-xs font-mono">{mv.soQuyetDinh}</td>
-                        <td className="text-xs text-[var(--text-muted)]">{mv.ghiChu}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: FEES */}
-          {activeTab === 'fees' && (
-            <div className="card-glass p-5 space-y-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">Bảng theo dõi Nộp Đảng phí 12 Tháng</h3>
-              <p className="text-xs text-[var(--text-muted)]">Theo dõi việc thu nộp đảng phí đầy đủ của các chi bộ trực thuộc</p>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>STT</th>
-                      <th>Họ và Tên</th>
-                      <th>Chi bộ</th>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <th key={m} className="text-center">T{m}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((m, idx) => (
-                      <tr key={m.id}>
-                        <td className="text-center text-xs">{idx + 1}</td>
-                        <td className="font-bold text-xs">{m.hoTen}</td>
-                        <td className="text-xs">{m.chiBo}</td>
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(mon => (
-                          <td key={mon} className="text-center text-xs font-bold text-emerald-600">✓</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: EVALUATIONS */}
-          {activeTab === 'evaluations' && (
-            <div className="card-glass p-5 space-y-4">
-              <h3 className="text-base font-bold text-[var(--text-main)]">Đánh giá & Xếp loại Cuối năm</h3>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>STT</th>
-                      <th>Họ và Tên</th>
-                      <th>Chi bộ</th>
-                      <th>Xếp loại chất lượng</th>
-                      <th>Khen thưởng</th>
-                      <th>Kỷ luật</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((m, idx) => (
-                      <tr key={m.id}>
-                        <td className="text-center text-xs">{idx + 1}</td>
-                        <td className="font-bold text-xs">{m.hoTen}</td>
-                        <td className="text-xs">{m.chiBo}</td>
-                        <td className="text-xs font-semibold text-blue-600">Hoàn thành tốt nhiệm vụ</td>
-                        <td className="text-xs">Giấy khen Cục</td>
-                        <td className="text-xs text-emerald-600">Không</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}
@@ -1011,7 +1323,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                 </div>
 
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-800 dark:text-blue-200">
-                  💡 <b>Địa điểm tổ chức:</b> Hệ thống đã tự động gán mặc định chuẩn xác theo từng Đội (Chi bộ 1: VP Chi cục, Chi bộ 2: Đội QLTT số 2, ..., Chi bộ Khối phòng: Hội trường B). Các Đội khi mở link chỉ cần chọn Ngày họp là xong!
+                  💡 <b>Sau khi up lên Vercel:</b> Link trên sẽ tự động đổi thành link online (ví dụ: <code>https://quanlydang-qltt.vercel.app/?mode=register</code>). Các Đội mở trên điện thoại hay máy tính đều tự chọn ngày được ngay!
                 </div>
               </div>
             </div>
