@@ -340,7 +340,7 @@ export default function App() {
   const handleExportWordDoc = () => {
     const tableRows = currentMonthSchedules.map((item, idx) => {
       const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
-      const biThuStyle = isLongName ? 'font-size: 9.5pt; letter-spacing: -0.3pt; white-space: nowrap;' : 'font-size: 11pt;';
+      const biThuStyle = isLongName ? 'font-size: 10pt; letter-spacing: -0.5pt; white-space: nowrap;' : 'font-size: 13pt;';
       
       let datePart = item.thoiGian || '';
       let dowPart = '';
@@ -352,15 +352,15 @@ export default function App() {
 
       return `
       <tr style="height: 22px;">
-        <td style="border: 1px solid black; padding: 2px; text-align: center;">${idx + 1}</td>
-        <td style="border: 1px solid black; padding: 2px 4px;">${item.chiBo}</td>
-        <td style="border: 1px solid black; padding: 2px; text-align: center;">${item.sl}</td>
-        <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 1.15;">
-          ${datePart}<br/><span style="font-size: 10pt;">${dowPart}</span>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt;">${idx + 1}</td>
+        <td style="border: 1px solid black; padding: 2px 4px; font-size: 11.5pt;">${item.chiBo}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt;">${item.sl}</td>
+        <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 100%;">
+          <span style="font-size: 11.5pt;">${datePart}</span><br/><span style="font-size: 10.5pt;">${dowPart}</span>
         </td>
-        <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.diaDiem}</td>
-        <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 1.15;">
-          <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 9.5pt;">${item.sdt || ''}</span>
+        <td style="border: 1px solid black; padding: 2px 4px; text-align: center; font-size: 11.5pt;">${item.diaDiem}</td>
+        <td style="border: 1px solid black; padding: 1px 2px; text-align: center; line-height: 100%;">
+          <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 10pt;">${item.sdt || ''}</span>
         </td>
       </tr>
       `;
@@ -815,16 +815,16 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       <div>{datePart}</div>
                       {dowPart && <div style={{ fontSize: '10pt' }}>{dowPart}</div>}
                     </td>
-                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
-                    <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
+                    <td style={{ border: '1px solid black', padding: '1px 2px', textAlign: 'center', lineHeight: '1.1' }}>
                       <div style={{ 
-                        fontSize: isLongName ? '9.5pt' : '11pt', 
-                        letterSpacing: isLongName ? '-0.4px' : 'normal',
-                        whiteSpace: 'nowrap'
+                        fontSize: isLongName ? '10pt' : '13pt', 
+                        letterSpacing: isLongName ? '-0.6px' : 'normal',
+                        whiteSpace: 'nowrap',
+                        fontWeight: 'bold'
                       }}>
                         {item.biThu}
                       </div>
-                      <div style={{ fontSize: '9.5pt' }}>{item.sdt}</div>
+                      <div style={{ fontSize: '10pt' }}>{item.sdt}</div>
                     </td>
                   </tr>
                 );
