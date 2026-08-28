@@ -9,6 +9,19 @@ import {
   INITIAL_MEETING_SCHEDULES
 } from './data';
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { 
+  Document, 
+  Packer, 
+  Paragraph, 
+  Table, 
+  TableCell, 
+  TableRow, 
+  TextRun, 
+  AlignmentType, 
+  WidthType, 
+  BorderStyle 
+} from 'docx';
 import {
   Users,
   TrendingUp,
@@ -42,7 +55,8 @@ import {
   Archive,
   Save,
   BookOpen,
-  FileCheck2
+  FileCheck2,
+  FileText
 } from 'lucide-react';
 
 export default function App() {
@@ -79,19 +93,19 @@ export default function App() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Biểu Tổng Hợp Số Liệu Báo Cáo 06 Tháng / Năm (Số liệu chi tiết từng chi bộ)
+  // Biểu Tổng Hợp Số Liệu Báo Cáo 06 Tháng / Năm
   const [sixMonthsReports, setSixMonthsReports] = useState(() => {
     const saved = localStorage.getItem('qltt_party_sixmonths_v3');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Lưu trữ Lịch sử Thông Báo Lịch Họp đã ban hành (Archive để sau này coi lại)
+  // Lưu trữ Lịch sử Thông Báo Lịch Họp đã ban hành
   const [archivedNotices, setArchivedNotices] = useState(() => {
     const saved = localStorage.getItem('qltt_party_archived_notices');
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'dgxl', 'sixmonths', 'dashboard', 'members', 'archive'
+  const [activeTab, setActiveTab] = useState('meetings');
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(8);
 
@@ -114,7 +128,6 @@ export default function App() {
   const [teamNote, setTeamNote] = useState('');
   const [teamSubmitted, setTeamSubmitted] = useState(false);
 
-  // Tự động gán địa điểm mặc định khi chọn Chi bộ
   useEffect(() => {
     const br = branchDetails.find(b => b.id === teamSelectChiBo);
     if (br) {
@@ -122,7 +135,6 @@ export default function App() {
     }
   }, [teamSelectChiBo, branchDetails]);
 
-  // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('qltt_party_members_v3', JSON.stringify(members));
   }, [members]);
@@ -142,10 +154,8 @@ export default function App() {
     localStorage.setItem('qltt_party_archived_notices', JSON.stringify(archivedNotices));
   }, [archivedNotices]);
 
-  // Key tháng hiện tại
   const currentKey = `${selectedYear}-${selectedMonth}`;
 
-  // Dữ liệu Lịch họp tháng hiện tại
   const currentMonthSchedules = useMemo(() => {
     if (meetingSchedules[currentKey]) {
       return meetingSchedules[currentKey];
@@ -159,11 +169,10 @@ export default function App() {
       biThu: b.biThu,
       sdt: b.sdt,
       trangThai: 'Chờ đăng ký',
-      ghiChu: '' // Ghi chú biến động: miễn sinh hoạt, chuyển đảng tạm thời, v.v.
+      ghiChu: ''
     }));
   }, [meetingSchedules, currentKey, branchDetails]);
 
-  // Cập nhật lịch họp
   const handleUpdateSchedule = (chiBoId, field, value) => {
     const updatedList = currentMonthSchedules.map(item => {
       if (item.chiBoId === chiBoId) {
@@ -181,7 +190,6 @@ export default function App() {
     }));
   };
 
-  // 1. Phê duyệt Thống nhất Lãnh đạo & Tự động Lưu vào Kho Lưu Trữ (Archive)
   const handleApproveAndArchive = () => {
     const updatedList = currentMonthSchedules.map(item => ({
       ...item,
@@ -192,7 +200,6 @@ export default function App() {
       [currentKey]: updatedList
     }));
 
-    // Lưu một bản ghi lịch sử Thông báo vào Kho lưu trữ
     const newArchiveItem = {
       id: 'TB_' + currentKey + '_' + Date.now(),
       nam: selectedYear,
@@ -203,16 +210,14 @@ export default function App() {
       chiTiet: updatedList
     };
 
-    // Kiểm tra nếu đã có bản lưu tháng này thì ghi đè, nếu chưa thì thêm mới
     setArchivedNotices(prev => {
       const filtered = prev.filter(a => !(a.nam === selectedYear && a.thang === selectedMonth));
       return [newArchiveItem, ...filtered];
     });
 
-    alert(`Đã duyệt thống nhất với Lãnh đạo và tự động lưu vào 'Kho Lưu Trữ Thông Báo'! Đồng chí có thể bấm 'In Thông Báo Trình Ký'.`);
+    alert(`Đã duyệt thống nhất với Lãnh đạo và tự động lưu vào 'Kho Lưu Trữ Thông Báo'! Đồng chí có thể bấm 'Xuất File Word (.DOCX)' hoặc 'In Trình Ký'.`);
   };
 
-  // 2. Dữ liệu ĐGXL (Đánh giá xếp loại chất lượng sinh hoạt chi bộ hằng tháng)
   const currentMonthDGXL = useMemo(() => {
     if (dgxlData[currentKey]) {
       return dgxlData[currentKey];
@@ -225,7 +230,7 @@ export default function App() {
         sl: b.sl,
         ngayHop: schedule.thoiGian || 'Chưa họp',
         diemDG: 100,
-        mucXepLoai: 'Tốt', // 'Tốt', 'Khá', 'Trung bình', 'Kém'
+        mucXepLoai: 'Tốt',
         ghiChuTruDiem: schedule.ghiChu || ''
       };
     });
@@ -244,7 +249,6 @@ export default function App() {
     }));
   };
 
-  // 3. Dữ liệu Báo cáo 06 Tháng Năm 2026 (12 Cột nghiệp vụ chuẩn)
   const sixMonthsData = useMemo(() => {
     const sixKey = `${selectedYear}-6M`;
     if (sixMonthsReports[sixKey]) {
@@ -281,7 +285,6 @@ export default function App() {
     }));
   };
 
-  // Đội tự gửi đăng ký qua Link
   const handleTeamSubmitRegistration = (e) => {
     e.preventDefault();
     if (!teamDate) {
@@ -304,7 +307,6 @@ export default function App() {
     setTimeout(() => setTeamSubmitted(false), 5000);
   };
 
-  // Xuất Excel Biểu ĐGXL hoặc Biểu 06 Tháng
   const handleExportDGXLToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(currentMonthDGXL.map((d, idx) => ({
       'STT': idx + 1,
@@ -342,6 +344,247 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `TongHop_06Thang_${selectedYear}`);
     XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_06_Thang_${selectedYear}.xlsx`);
+  };
+
+  // XUẤT FILE WORD .DOCX CHUẨN 1 TRANG Y HỆT MẪU GỐC CỦA ĐỒNG CHÍ
+  const handleExportDocx = async () => {
+    const totalDv = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
+
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: {
+            margin: {
+              top: 720, // 0.5 inch
+              bottom: 720,
+              left: 1000,
+              right: 800
+            }
+          }
+        },
+        children: [
+          // Header Table
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+              insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE }
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 48, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: "ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG", font: "Times New Roman", size: 20 }),
+                        ]
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: "ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG", bold: true, font: "Times New Roman", size: 20 }),
+                        ]
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: "*", font: "Times New Roman", size: 20 }),
+                        ]
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: "Số         -TB/ĐU", font: "Times New Roman", size: 22 }),
+                        ]
+                      })
+                    ]
+                  }),
+                  new TableCell({
+                    width: { size: 52, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: "ĐẢNG CỘNG SẢN VIỆT NAM", bold: true, font: "Times New Roman", size: 22 }),
+                        ]
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [new TextRun({ text: "" })]
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { line: 240, after: 0 },
+                        children: [
+                          new TextRun({ text: `An Giang, ngày    tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}`, italics: true, font: "Times New Roman", size: 22 }),
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          // Title
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 120, after: 0, line: 240 },
+            children: [
+              new TextRun({ text: "THÔNG BÁO", bold: true, font: "Times New Roman", size: 24 })
+            ]
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 0, line: 240 },
+            children: [
+              new TextRun({ text: `Lịch sinh hoạt lệ tháng ${selectedMonth}/${selectedYear} của các chi bộ trực thuộc`, bold: true, font: "Times New Roman", size: 22 })
+            ]
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 60, line: 240 },
+            children: [
+              new TextRun({ text: "-----", font: "Times New Roman", size: 20 })
+            ]
+          }),
+
+          // Content Paragraphs
+          new Paragraph({
+            indent: { firstLine: 400 },
+            spacing: { before: 40, after: 20, line: 240 },
+            children: [
+              new TextRun({ text: "Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.", font: "Times New Roman", size: 21 })
+            ]
+          }),
+          new Paragraph({
+            indent: { firstLine: 400 },
+            spacing: { before: 0, after: 60, line: 240 },
+            children: [
+              new TextRun({ text: `Theo đăng ký lịch sinh hoạt lệ chi bộ tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:`, font: "Times New Roman", size: 21 })
+            ]
+          }),
+
+          // Main Schedule Table
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              // Header Row
+              new TableRow({
+                children: [
+                  new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "STT", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Chi bộ", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "SL", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ width: { size: 24, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Thời gian", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ width: { size: 18, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Địa điểm", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Bí thư, điện thoại", bold: true, font: "Times New Roman", size: 19 })] })] })
+                ]
+              }),
+              // 13 Branch Rows
+              ...currentMonthSchedules.map((item, idx) => (
+                new TableRow({
+                  children: [
+                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: String(idx + 1), font: "Times New Roman", size: 18 })] })] }),
+                    new TableCell({ children: [new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.chiBo, font: "Times New Roman", size: 18 })] })] }),
+                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: String(item.sl), font: "Times New Roman", size: 18 })] })] }),
+                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 200 }, children: [new TextRun({ text: item.thoiGian, font: "Times New Roman", size: 18 })] })] }),
+                    new TableCell({ children: [new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.diaDiem, font: "Times New Roman", size: 18 })] })] }),
+                    new TableCell({ children: [
+                      new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.biThu, font: "Times New Roman", size: 18 })] }),
+                      new Paragraph({ spacing: { line: 200 }, children: [new TextRun({ text: item.sdt || '', font: "Times New Roman", size: 18 })] })
+                    ] })
+                  ]
+                })
+              )),
+              // Total Row
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "TỔNG SỐ", bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(totalDv), bold: true, font: "Times New Roman", size: 19 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "" })] })] })
+                ]
+              })
+            ]
+          }),
+
+          // Footer Table
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+              insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE }
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({
+                        spacing: { before: 80, after: 0, line: 240 },
+                        children: [
+                          new TextRun({ text: "Nơi nhận:", bold: true, italics: true, font: "Times New Roman", size: 19 }),
+                        ]
+                      }),
+                      new Paragraph({
+                        spacing: { before: 0, after: 0, line: 220 },
+                        children: [
+                          new TextRun({ text: "- Đảng ủy Sở Công Thương;
+- Bí thư các Chi bộ trực thuộc;
+- Lưu: Đảng ủy.", italics: true, font: "Times New Roman", size: 18 }),
+                        ]
+                      })
+                    ]
+                  }),
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 80, after: 0, line: 240 },
+                        children: [
+                          new TextRun({ text: "T/M ĐẢNG ỦY
+", bold: true, font: "Times New Roman", size: 21 }),
+                          new TextRun({ text: "BÍ THƯ
+
+
+
+", bold: true, font: "Times New Roman", size: 21 }),
+                          new TextRun({ text: "Nguyễn Trung Tiến", bold: true, font: "Times New Roman", size: 22 })
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `${selectedMonth}. TB_họp chi bộ T${selectedMonth}-${selectedYear}_13 chi bộ.docx`);
   };
 
   const handlePrint = () => {
@@ -412,6 +655,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       onChange={(e) => {
                         setTeamDate(e.target.value);
                         if (e.target.value) {
+                          const [yyyy, mm, dd] = e.target.value.split('-');
                           const d = new Date(e.target.value);
                           const days = ['Chủ Nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'];
                           setTeamDayOfWeek(days[d.getDay()]);
@@ -490,7 +734,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
     );
   }
 
-  // GIAO DIỆN QUẢN TRỊ CHÍNH DÀNH CHO CÁN BỘ TỔNG HỢP
+  // GIAO DIỆN QUẢN TRỊ CHÍNH
   return (
     <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
       <div className="bg-[var(--bg-main)] text-[var(--text-main)] min-h-screen flex flex-col font-sans">
@@ -517,6 +761,15 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
 
             <div className="flex items-center gap-2.5">
               <button 
+                onClick={handleExportDocx}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm transition-all cursor-pointer"
+                title="Tải về file Word (.DOCX) chuẩn 1 trang giống hệt file mẫu gốc"
+              >
+                <FileText className="w-4 h-4" />
+                Tải File Word (.DOCX)
+              </button>
+
+              <button 
                 onClick={() => setIsShareModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
                 title="Tạo thông báo và lấy link gửi cho các Đội tự đăng ký ngày họp"
@@ -528,10 +781,10 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
               <button 
                 onClick={handlePrint}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all cursor-pointer"
-                title="In thông báo lịch sinh hoạt trình ký Bí thư Đảng ủy"
+                title="In thông báo lịch sinh hoạt trình ký Bí thư Đảng ủy (Chuẩn khít 1 trang A4)"
               >
                 <Printer className="w-4 h-4" />
-                In Thông Báo Trình Ký
+                In Thông Báo (1 Trang)
               </button>
 
               <button 
@@ -573,81 +826,104 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </div>
         </header>
 
-        {/* PRINT DOCUMENT FORMAT CHUẨN THỂ THỨC VĂN BẢN ĐẢNG */}
-        <div className="hidden print:block p-10 text-black bg-white" style={{ fontFamily: 'Times New Roman, serif' }}>
-          <div className="flex justify-between items-start text-center mb-6">
-            <div className="w-1/2 text-center">
-              <p className="text-sm font-normal">ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</p>
-              <p className="text-sm font-bold uppercase underline">ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</p>
-              <p className="text-xs mt-1">*</p>
-              <p className="text-xs">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</p>
-            </div>
-            <div className="w-1/2 text-center">
-              <p className="text-sm font-bold">ĐẢNG CỘNG SẢN VIỆT NAM</p>
-              <p className="text-xs italic mt-2">An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {selectedMonth} năm {selectedYear}</p>
-            </div>
-          </div>
-
-          <div className="text-center my-6">
-            <h2 className="text-lg font-bold uppercase">THÔNG BÁO</h2>
-            <h3 className="text-base font-bold">Lịch sinh hoạt lệ tháng {selectedMonth}/{selectedYear} của các chi bộ trực thuộc</h3>
-            <p className="text-xs">-----</p>
-          </div>
-
-          <p className="text-sm leading-relaxed mb-2" style={{ textIndent: '30px' }}>
-            Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
-          </p>
-          <p className="text-sm leading-relaxed mb-4" style={{ textIndent: '30px' }}>
-            Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
-          </p>
-
-          <table className="w-full border-collapse border border-black text-sm my-4">
-            <thead>
-              <tr className="bg-gray-100 font-bold text-center">
-                <th className="border border-black p-2 w-12">STT</th>
-                <th className="border border-black p-2">Chi bộ</th>
-                <th className="border border-black p-2 w-16">SL</th>
-                <th className="border border-black p-2">Thời gian</th>
-                <th className="border border-black p-2">Địa điểm</th>
-                <th className="border border-black p-2">Bí thư, điện thoại</th>
-              </tr>
-            </thead>
+        {/* PRINT DOCUMENT FORMAT - THIẾT KẾ CO GỌN CHUẨN KHÍT 1 TRANG A4 THEO FILE MẪU GỐC */}
+        <div className="hidden print:block text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', padding: '15px 25px', fontSize: '12.5px', lineHeight: '1.2' }}>
+          {/* Header 2 columns */}
+          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '8px' }}>
             <tbody>
-              {currentMonthSchedules.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="border border-black p-2 text-center">{idx + 1}</td>
-                  <td className="border border-black p-2 font-bold">{item.chiBo}</td>
-                  <td className="border border-black p-2 text-center">{item.sl}</td>
-                  <td className="border border-black p-2 text-center">{item.thoiGian}</td>
-                  <td className="border border-black p-2">{item.diaDiem}</td>
-                  <td className="border border-black p-2">
-                    <div className="font-semibold">{item.biThu}</div>
-                    <div className="text-xs font-mono">{item.sdt}</div>
-                  </td>
-                </tr>
-              ))}
-              <tr className="font-bold text-center bg-gray-50">
-                <td colSpan="2" className="border border-black p-2">TỔNG SỐ</td>
-                <td className="border border-black p-2 text-center">{totalMembersCount}</td>
-                <td colSpan="3" className="border border-black p-2"></td>
+              <tr style={{ border: 'none' }}>
+                <td style={{ width: '48%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                  <div style={{ fontSize: '11.5px' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                  <div style={{ fontSize: '11.5px', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                  <div style={{ fontSize: '11px', margin: '1px 0' }}>*</div>
+                  <div style={{ fontSize: '12px' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
+                </td>
+                <td style={{ width: '52%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                  <div style={{ height: '14px' }}></div>
+                  <div style={{ fontSize: '12px', fontStyle: 'italic' }}>
+                    An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <div className="flex justify-between items-start mt-8 text-sm">
-            <div className="w-1/2 italic text-xs">
-              <p className="font-bold underline not-italic">Nơi nhận:</p>
-              <p>- Đảng ủy Sở Công Thương;</p>
-              <p>- Bí thư các Chi bộ trực thuộc;</p>
-              <p>- Lưu: Đảng ủy.</p>
+          {/* Title */}
+          <div style={{ textAlign: 'center', margin: '6px 0 4px 0' }}>
+            <div style={{ fontSize: '13.5px', fontWeight: 'bold' }}>THÔNG BÁO</div>
+            <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>
+              Lịch sinh hoạt lệ tháng {selectedMonth}/{selectedYear} của các chi bộ trực thuộc
             </div>
-            <div className="w-1/2 text-center">
-              <p className="font-bold uppercase">T/M ĐẢNG ỦY</p>
-              <p className="font-bold uppercase">BÍ THƯ</p>
-              <div className="h-24"></div>
-              <p className="font-bold uppercase">Nguyễn Trung Tiến</p>
-            </div>
+            <div style={{ fontSize: '11px' }}>-----</div>
           </div>
+
+          {/* Paragraphs */}
+          <div style={{ textIndent: '25px', textAlign: 'justify', marginBottom: '2px', fontSize: '12px' }}>
+            Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
+          </div>
+          <div style={{ textIndent: '25px', textAlign: 'justify', marginBottom: '6px', fontSize: '12px' }}>
+            Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
+          </div>
+
+          {/* 13 Branch Schedule Table */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11px', margin: '4px 0' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f0f0f0', textAlign: 'center', fontWeight: 'bold' }}>
+                <th style={{ border: '1px solid black', padding: '3px 2px', width: '5%' }}>STT</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '20%' }}>Chi bộ</th>
+                <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>SL</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '24%' }}>Thời gian</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '20%' }}>Địa điểm</th>
+                <th style={{ border: '1px solid black', padding: '3px 4px', width: '25%' }}>Bí thư, điện thoại</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentMonthSchedules.map((item, idx) => (
+                <tr key={idx} style={{ height: '20px' }}>
+                  <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.thoiGian}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.diaDiem}</td>
+                  <td style={{ border: '1px solid black', padding: '2px 4px', lineHeight: '1.1' }}>
+                    <div>{item.biThu}</div>
+                    <div style={{ fontSize: '10.5px' }}>{item.sdt}</div>
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 'bold', textAlign: 'center' }}>
+                <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                <td style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'left' }}>TỔNG SỐ</td>
+                <td style={{ border: '1px solid black', padding: '3px 2px' }}>{totalMembersCount}</td>
+                <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                <td style={{ border: '1px solid black', padding: '3px' }}></td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Footer Table */}
+          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '6px' }}>
+            <tbody>
+              <tr style={{ border: 'none' }}>
+                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic' }}>Nơi nhận:</div>
+                  <div style={{ fontSize: '10.5px', fontStyle: 'italic', lineHeight: '1.2' }}>
+                    - Đảng ủy Sở Công Thương;<br />
+                    - Bí thư các Chi bộ trực thuộc;<br />
+                    - Lưu: Đảng ủy.
+                  </div>
+                </td>
+                <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>BÍ THƯ</div>
+                  <div style={{ height: '48px' }}></div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* MAIN BODY CONTENT */}
@@ -657,7 +933,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           {activeTab === 'meetings' && (
             <div className="space-y-6">
               
-              {/* QUY TRÌNH HÀNG THÁNG BANNER */}
+              {/* QUY TRÌNH BANNER */}
               <div className="card-glass p-5 border-l-4 border-amber-500 bg-linear-to-r from-amber-500/5 to-transparent">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div>
@@ -668,11 +944,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       </h3>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      1. Ngày 20 gửi link Zalo cho các Đội $
-ightarrow$ 2. Đội tự chọn ngày $
-ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $
-ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $
-ightarrow$ 5. In trình ký Bí thư.
+                      1. Ngày 20 gửi link Zalo cho các Đội $ightarrow$ 2. Đội tự chọn ngày $ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $ightarrow$ 5. Bấm <b>'Tải File Word'</b> hoặc <b>'In Thông Báo (1 Trang)'</b>.
                     </p>
                   </div>
 
@@ -732,11 +1004,21 @@ ightarrow$ 5. In trình ký Bí thư.
                   </button>
 
                   <button
+                    onClick={handleExportDocx}
+                    className="px-3.5 py-2 rounded-md bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Xuất file Word .DOCX chuẩn 1 trang A4 giống hệt file gốc"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Tải File Word (.DOCX)
+                  </button>
+
+                  <button
                     onClick={handlePrint}
                     className="px-3.5 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="In chuẩn khít 1 trang A4"
                   >
                     <Printer className="w-4 h-4" />
-                    In Thông Báo (Trình Ký)
+                    In Thông Báo (1 Trang)
                   </button>
                 </div>
               </div>
@@ -789,7 +1071,7 @@ ightarrow$ 5. In trình ký Bí thư.
                               />
                               <input
                                 type="text"
-                                placeholder="Chọn lịch hoặc nhập: 07/8/2026 (thứ Sáu)"
+                                placeholder="VD: 07/8/2026 (thứ Sáu)"
                                 value={item.thoiGian === 'Chưa đăng ký' ? '' : item.thoiGian}
                                 onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
                                 className="flex-1 text-xs font-bold text-blue-700 dark:text-blue-300"
