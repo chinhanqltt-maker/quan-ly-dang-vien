@@ -338,18 +338,22 @@ export default function App() {
 
   // XUẤT FILE WORD .DOC CHUẨN ĐỊNH DẠNG MICROSOFT WORD 100% KHÔNG LỖI
   const handleExportWordDoc = () => {
-    const tableRows = currentMonthSchedules.map((item, idx) => `
+    const tableRows = currentMonthSchedules.map((item, idx) => {
+      const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+      const biThuStyle = isLongName ? 'font-size: 9.5pt; letter-spacing: -0.3pt; white-space: nowrap;' : 'font-size: 11pt;';
+      return `
       <tr style="height: 22px;">
         <td style="border: 1px solid black; padding: 2px; text-align: center;">${idx + 1}</td>
         <td style="border: 1px solid black; padding: 2px 4px;">${item.chiBo}</td>
         <td style="border: 1px solid black; padding: 2px; text-align: center;">${item.sl}</td>
         <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.thoiGian}</td>
-        <td style="border: 1px solid black; padding: 2px 4px;">${item.diaDiem}</td>
-        <td style="border: 1px solid black; padding: 2px 4px; line-height: 1.15;">
-          <b>${item.biThu}</b><br/>${item.sdt || ''}
+        <td style="border: 1px solid black; padding: 2px 4px; text-align: center;">${item.diaDiem}</td>
+        <td style="border: 1px solid black; padding: 2px 3px; text-align: center; line-height: 1.15;">
+          <b style="${biThuStyle}">${item.biThu}</b><br/><span style="font-size: 9.5pt;">${item.sdt || ''}</span>
         </td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
 
     const wordHtml = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -760,19 +764,28 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
               </tr>
             </thead>
             <tbody>
-              {currentMonthSchedules.map((item, idx) => (
-                <tr key={idx} style={{ height: '20px' }}>
-                  <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center', whiteSpace: 'pre-line' }}>{item.thoiGian}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.diaDiem}</td>
-                  <td style={{ border: '1px solid black', padding: '2px 4px', lineHeight: '1.15' }}>
-                    <div>{item.biThu}</div>
-                    <div style={{ fontSize: '10pt' }}>{item.sdt}</div>
-                  </td>
-                </tr>
-              ))}
+              {currentMonthSchedules.map((item, idx) => {
+                const isLongName = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+                return (
+                  <tr key={idx} style={{ height: '20px' }}>
+                    <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center', whiteSpace: 'pre-line' }}>{item.thoiGian}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
+                      <div style={{ 
+                        fontSize: isLongName ? '9.5pt' : '11pt', 
+                        letterSpacing: isLongName ? '-0.4px' : 'normal',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {item.biThu}
+                      </div>
+                      <div style={{ fontSize: '9.5pt' }}>{item.sdt}</div>
+                    </td>
+                  </tr>
+                );
+              })}
               <tr style={{ fontWeight: 'bold', textAlign: 'center' }}>
                 <td colSpan="2" style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'center' }}>TỔNG SỐ</td>
                 <td style={{ border: '1px solid black', padding: '3px 2px' }}>{totalMembersCount}</td>
