@@ -44,15 +44,18 @@ import {
   Save,
   BookOpen,
   FileCheck2,
-  FileText
+  FileText,
+  Star,
+  ClipboardList
 } from 'lucide-react';
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Check URL params for Member Registration Mode
+  // Check URL params for Member Registration / Report Mode
   const urlParams = new URLSearchParams(window.location.search);
   const isPublicRegisterMode = urlParams.get('mode') === 'register';
+  const isPublicReportMode = urlParams.get('mode') === 'report';
   const paramChiBoId = urlParams.get('chibo');
 
   // Core Data States
@@ -75,7 +78,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_MEETING_SCHEDULES;
   });
 
-  // Biểu Đánh Giá Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Hằng Tháng (ĐGXL)
+  // Biểu Đánh Giá Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Hằng Tháng (ĐGXL) theo HD 01-HD/TU
   const [dgxlData, setDgxlData] = useState(() => {
     const saved = localStorage.getItem('qltt_party_dgxl_v3');
     return saved ? JSON.parse(saved) : {};
@@ -95,17 +98,21 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('meetings');
   const [selectedYear, setSelectedYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(8);
+  const [selectedMonth, setSelectedMonth] = useState(9);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterChiBo, setFilterChiBo] = useState('Tất cả');
 
   // Modal Share Link
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTab, setShareTab] = useState('register'); // 'register' | 'report'
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
 
-  // Form tự đăng ký của Đội
+  // Print Mode State ('schedule' | 'dgxl')
+  const [printDocType, setPrintDocType] = useState('schedule');
+
+  // Form tự đăng ký lịch họp của Đội (mode=register)
   const initialSelectedBranchId = paramChiBoId ? Number(paramChiBoId) : 1;
   const initialBranchObj = branchDetails.find(b => b.id === initialSelectedBranchId) || branchDetails[0];
 
@@ -116,12 +123,28 @@ export default function App() {
   const [teamNote, setTeamNote] = useState('');
   const [teamSubmitted, setTeamSubmitted] = useState(false);
 
+  // Form tự báo cáo kết quả ĐGXL của Đội sau khi họp (mode=report)
+  const [reportBranchId, setReportBranchId] = useState(initialSelectedBranchId);
+  const [reportAttendance, setReportAttendance] = useState(`${initialBranchObj.sl}/${initialBranchObj.sl}`);
+  const [reportMeetingDate, setReportMeetingDate] = useState('');
+  const [reportScore, setReportScore] = useState(100);
+  const [reportClassification, setReportClassification] = useState('Tốt');
+  const [reportDeductionNote, setReportDeductionNote] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+
   useEffect(() => {
     const br = branchDetails.find(b => b.id === teamSelectChiBo);
     if (br) {
       setTeamLocation(br.diaDiem);
     }
   }, [teamSelectChiBo, branchDetails]);
+
+  useEffect(() => {
+    const br = branchDetails.find(b => b.id === reportBranchId);
+    if (br) {
+      setReportAttendance(`${br.sl}/${br.sl}`);
+    }
+  }, [reportBranchId, branchDetails]);
 
   useEffect(() => {
     localStorage.setItem('qltt_party_members_v3', JSON.stringify(members));
@@ -146,7 +169,6 @@ export default function App() {
 
   const currentMonthSchedules = useMemo(() => {
     if (meetingSchedules[currentKey]) {
-      // Đảm bảo luôn giữ đúng Bí thư, Số điện thoại và Địa điểm từ danh mục chuẩn nếu bị thiếu
       return meetingSchedules[currentKey].map(item => {
         const b = branchDetails.find(br => br.id === item.chiBoId) || {};
         return {
@@ -212,20 +234,26 @@ export default function App() {
       return [newArchiveItem, ...filtered];
     });
 
-    alert(`Đã duyệt thống nhất với Lãnh đạo và tự động lưu vào 'Kho Lưu Trữ Thông Báo'! Đồng chí có thể bấm 'Xuất File Word (.DOCX)' hoặc 'In Trình Ký'.`);
+    alert(`Đã duyệt thống nhất với Lãnh đạo và tự động lưu vào 'Kho Lưu Trữ Thông Báo'! Đồng chí có thể bấm 'Xuất File Word (.DOC)' hoặc 'In Trình Ký'.`);
   };
 
+  // Tính toán dữ liệu ĐGXL (10 cột theo Hướng dẫn 01-HD/TU)
   const currentMonthDGXL = useMemo(() => {
     if (dgxlData[currentKey]) {
       return dgxlData[currentKey];
     }
     return branchDetails.map(b => {
       const schedule = currentMonthSchedules.find(s => s.chiBoId === b.id) || {};
+      let meetingDate = schedule.thoiGian || '';
+      if (meetingDate && meetingDate.includes('(')) {
+        meetingDate = meetingDate.split('(')[0].trim();
+      }
       return {
         chiBoId: b.id,
         chiBo: b.name,
-        sl: b.sl,
-        ngayHop: schedule.thoiGian || 'Chưa họp',
+        sl: `${b.sl}/${b.sl}`,
+        soLgTong: b.sl,
+        ngayHop: meetingDate || 'Chưa họp',
         diemDG: 100,
         mucXepLoai: 'Tốt',
         ghiChuTruDiem: schedule.ghiChu || ''
@@ -236,7 +264,16 @@ export default function App() {
   const handleUpdateDGXL = (chiBoId, field, value) => {
     const updated = currentMonthDGXL.map(item => {
       if (item.chiBoId === chiBoId) {
-        return { ...item, [field]: value };
+        const nextItem = { ...item, [field]: value };
+        // Tự động suy ra mức xếp loại nếu sửa điểm
+        if (field === 'diemDG') {
+          const score = Number(value) || 0;
+          if (score >= 90) nextItem.mucXepLoai = 'Tốt';
+          else if (score >= 70) nextItem.mucXepLoai = 'Khá';
+          else if (score >= 50) nextItem.mucXepLoai = 'Trung bình';
+          else nextItem.mucXepLoai = 'Kém';
+        }
+        return nextItem;
       }
       return item;
     });
@@ -282,6 +319,7 @@ export default function App() {
     }));
   };
 
+  // Submit từ form đăng ký lịch họp (mode=register)
   const handleTeamSubmitRegistration = (e) => {
     e.preventDefault();
     if (!teamDate) {
@@ -304,22 +342,216 @@ export default function App() {
     setTimeout(() => setTeamSubmitted(false), 5000);
   };
 
+  // Submit từ form báo cáo ĐGXL sau họp (mode=report)
+  const handleTeamSubmitReport = (e) => {
+    e.preventDefault();
+    let dateStr = reportMeetingDate;
+    if (reportMeetingDate && reportMeetingDate.includes('-')) {
+      const [yyyy, mm, dd] = reportMeetingDate.split('-');
+      dateStr = `${dd}/${mm}/${yyyy}`;
+    }
+
+    handleUpdateDGXL(reportBranchId, 'sl', reportAttendance);
+    if (dateStr) {
+      handleUpdateDGXL(reportBranchId, 'ngayHop', dateStr);
+    }
+    handleUpdateDGXL(reportBranchId, 'diemDG', Number(reportScore));
+    handleUpdateDGXL(reportBranchId, 'mucXepLoai', reportClassification);
+    if (reportDeductionNote) {
+      handleUpdateDGXL(reportBranchId, 'ghiChuTruDiem', reportDeductionNote);
+    }
+
+    setReportSubmitted(true);
+    setTimeout(() => setReportSubmitted(false), 5000);
+  };
+
+  // XUẤT EXCEL ĐGXL CHUẨN 10 CỘT HƯỚNG DẪN 01-HD/TU
   const handleExportDGXLToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(currentMonthDGXL.map((d, idx) => ({
-      'STT': idx + 1,
-      'Tên đơn vị': d.chiBo,
-      'Số lượng đảng viên': d.sl,
-      'Ngày họp chi bộ': d.ngayHop,
-      'Kết quả số điểm đánh giá': d.diemDG,
-      'Tốt': d.mucXepLoai === 'Tốt' ? 'X' : '',
-      'Khá': d.mucXepLoai === 'Khá' ? 'X' : '',
-      'Trung bình': d.mucXepLoai === 'Trung bình' ? 'X' : '',
-      'Kém': d.mucXepLoai === 'Kém' ? 'X' : '',
-      'Ghi chú (thuyết minh điểm trừ)': d.ghiChuTruDiem
-    })));
+    const dataRows = currentMonthDGXL.map((d, idx) => ({
+      'STT (1)': idx + 1,
+      'Tên đơn vị (2)': d.chiBo,
+      'Số lượng đảng viên (3)': d.sl,
+      'Ngày họp chi bộ (4)': d.ngayHop,
+      'KQ số điểm được đánh giá (5)': d.diemDG,
+      'Tốt (6)': d.mucXepLoai === 'Tốt' ? 'x' : '',
+      'Khá (7)': d.mucXepLoai === 'Khá' ? 'x' : '',
+      'Trung bình (8)': d.mucXepLoai === 'Trung bình' ? 'x' : '',
+      'Kém (9)': d.mucXepLoai === 'Kém' ? 'x' : '',
+      'Ghi chú (thuyết minh điểm trừ) (10)': d.ghiChuTruDiem || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataRows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `DGXL_T${selectedMonth}_${selectedYear}`);
-    XLSX.writeFile(wb, `DGXL_Sinh_Hoat_Chi_Bo_T${selectedMonth}_${selectedYear}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `BC_T${selectedMonth}_HD01`);
+    XLSX.writeFile(wb, `${selectedMonth}. BC_T${selectedMonth}_xếp loại chi bộ theo HD 01 TU.xlsx`);
+  };
+
+  // XUẤT FILE WORD .DOC ĐGXL CHUẨN 100% 1 TRANG A4 THEO HƯỚNG DẪN 01-HD/TU
+  const handleExportDGXLWordDoc = () => {
+    const totTot = currentMonthDGXL.filter(d => d.mucXepLoai === 'Tốt').length;
+    const totKha = currentMonthDGXL.filter(d => d.mucXepLoai === 'Khá').length;
+    const totTB = currentMonthDGXL.filter(d => d.mucXepLoai === 'Trung bình').length;
+    const totKem = currentMonthDGXL.filter(d => d.mucXepLoai === 'Kém').length;
+
+    const tableRows = currentMonthDGXL.map((item, idx) => `
+      <tr style="height: 20px;">
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt;">${idx + 1}</td>
+        <td style="border: 1px solid black; padding: 2px 4px; font-size: 11pt;">${item.chiBo}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt;">${item.sl}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt;">${item.ngayHop}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt; font-weight: bold;">${item.diemDG}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt; font-weight: bold;">${item.mucXepLoai === 'Tốt' ? 'x' : ''}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt; font-weight: bold;">${item.mucXepLoai === 'Khá' ? 'x' : ''}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt; font-weight: bold;">${item.mucXepLoai === 'Trung bình' ? 'x' : ''}</td>
+        <td style="border: 1px solid black; padding: 2px; text-align: center; font-size: 11pt; font-weight: bold;">${item.mucXepLoai === 'Kém' ? 'x' : ''}</td>
+        <td style="border: 1px solid black; padding: 2px 4px; font-size: 10pt;">${item.ghiChuTruDiem || ''}</td>
+      </tr>
+    `).join('');
+
+    const wordHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>DANH SÁCH TỔNG HỢP ĐÁNH GIÁ, XẾP LOẠI CHẤT LƯỢNG SINH HOẠT CHI BỘ THÁNG ${selectedMonth} NĂM ${selectedYear}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          @page Section1 {
+            size: 21.0cm 29.7cm;
+            margin: 1.0cm 1.2cm 1.0cm 1.8cm;
+            mso-header-margin: 0pt;
+            mso-footer-margin: 0pt;
+            mso-paper-source: 0;
+          }
+          div.Section1 { page: Section1; }
+          body {
+            font-family: 'Times New Roman', serif;
+            font-size: 13pt;
+            line-height: 100%;
+            mso-line-height-rule: exactly;
+            color: black;
+            margin: 0;
+            padding: 0;
+          }
+          p, div {
+            margin-top: 0pt !important;
+            margin-bottom: 0pt !important;
+            line-height: 100% !important;
+            mso-line-height-rule: exactly;
+          }
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 0pt;
+            margin-bottom: 0pt;
+          }
+          td, th {
+            mso-line-height-rule: exactly;
+            line-height: 100%;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="Section1">
+          <!-- Header Table -->
+          <table style="width: 100%; border: none; margin-bottom: 4pt;">
+            <tr>
+              <td style="width: 54%; text-align: center; vertical-align: top; border: none; font-size: 11pt; white-space: nowrap; line-height: 100%;">
+                ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG<br/>
+                <b>ĐẢNG ỦY CHI CỤC QUẢN LÝ THỊ TRƯỜNG</b><br/>
+                *
+              </td>
+              <td style="width: 46%; text-align: center; vertical-align: top; border: none; font-size: 12pt; white-space: nowrap; line-height: 100%;">
+                <b>ĐẢNG CỘNG SẢN VIỆT NAM</b><br/><br/>
+                <i>An Giang, ngày 10 tháng ${String(selectedMonth).padStart(2, '0')} năm ${selectedYear}</i>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Title -->
+          <div style="text-align: center; margin-top: 4pt; margin-bottom: 6pt;">
+            <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">DANH SÁCH</p>
+            <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">TỔNG HỢP ĐÁNH GIÁ, XẾP LOẠI CHẤT LƯỢNG SINH HOẠT CHI BỘ</p>
+            <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">THÁNG ${String(selectedMonth).padStart(2, '0')} NĂM ${selectedYear}</p>
+            <p style="font-size: 11pt; margin: 0; line-height: 100%;">-----</p>
+          </div>
+
+          <!-- 10 Columns Table theo HD 01-HD/TU -->
+          <table style="width: 100%; border: 1px solid black; font-size: 10.5pt; margin-top: 2pt; margin-bottom: 6pt;">
+            <tr style="text-align: center; font-weight: bold; font-size: 11pt; background-color: #f2f2f2;">
+              <td rowspan="2" style="border: 1px solid black; padding: 2px; width: 4%;">S<br/>T<br/>T</td>
+              <td rowspan="2" style="border: 1px solid black; padding: 2px 4px; width: 16%;">Tên đơn vị</td>
+              <td rowspan="2" style="border: 1px solid black; padding: 2px; width: 9%;">Số<br/>lượng<br/>đảng viên</td>
+              <td rowspan="2" style="border: 1px solid black; padding: 2px; width: 10%;">Ngày<br/>họp<br/>chi<br/>bộ</td>
+              <td colspan="5" style="border: 1px solid black; padding: 2px;">Mức đánh giá xếp loại sau buổi sinh hoạt chi bộ hằng tháng</td>
+              <td rowspan="2" style="border: 1px solid black; padding: 2px 4px; width: 23%;">Ghi chú<br/>(thuyết minh điểm trừ)</td>
+            </tr>
+            <tr style="text-align: center; font-weight: bold; font-size: 10.5pt; background-color: #f2f2f2;">
+              <td style="border: 1px solid black; padding: 2px; width: 9%;">KQ số điểm<br/>được<br/>đánh giá</td>
+              <td style="border: 1px solid black; padding: 2px; width: 7%;">Tốt</td>
+              <td style="border: 1px solid black; padding: 2px; width: 7%;">Khá</td>
+              <td style="border: 1px solid black; padding: 2px; width: 7%;">Trung<br/>bình</td>
+              <td style="border: 1px solid black; padding: 2px; width: 7%;">Kém</td>
+            </tr>
+            <tr style="text-align: center; font-style: italic; font-size: 9.5pt; background-color: #fafafa;">
+              <td style="border: 1px solid black; padding: 1px;">1</td>
+              <td style="border: 1px solid black; padding: 1px;">2</td>
+              <td style="border: 1px solid black; padding: 1px;">3</td>
+              <td style="border: 1px solid black; padding: 1px;">4</td>
+              <td style="border: 1px solid black; padding: 1px;">5</td>
+              <td style="border: 1px solid black; padding: 1px;">6</td>
+              <td style="border: 1px solid black; padding: 1px;">7</td>
+              <td style="border: 1px solid black; padding: 1px;">8</td>
+              <td style="border: 1px solid black; padding: 1px;">9</td>
+              <td style="border: 1px solid black; padding: 1px;">10</td>
+            </tr>
+            ${tableRows}
+            <tr style="font-weight: bold; text-align: center; height: 20px;">
+              <td colspan="2" style="border: 1px solid black; padding: 2px 4px; text-align: center;">TỔNG CỘNG</td>
+              <td style="border: 1px solid black; padding: 2px;">157</td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
+              <td style="border: 1px solid black; padding: 2px;">${totTot}</td>
+              <td style="border: 1px solid black; padding: 2px;">${totKha}</td>
+              <td style="border: 1px solid black; padding: 2px;">${totTB}</td>
+              <td style="border: 1px solid black; padding: 2px;">${totKem}</td>
+              <td style="border: 1px solid black; padding: 2px;"></td>
+            </tr>
+          </table>
+
+          <!-- Footer Table -->
+          <table style="width: 100%; border: none; margin-top: 4pt;">
+            <tr>
+              <td style="width: 50%; vertical-align: top; border: none; line-height: 100%;">
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;"><u>Nơi nhận:</u></p>
+                <p style="font-size: 12pt; line-height: 100%; margin: 0;">
+                  - Đảng ủy Sở;<br/>
+                  - Đảng ủy Chi cục QLTT;<br/>
+                  - Lưu: ĐU.
+                </p>
+              </td>
+              <td style="width: 50%; text-align: center; vertical-align: top; border: none; line-height: 100%;">
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;">T/M ĐẢNG ỦY</p>
+                <p style="font-size: 12pt; font-weight: bold; margin: 0; line-height: 100%;">BÍ THƯ</p>
+                <div style="height: 38pt;"></div>
+                <p style="font-size: 13pt; font-weight: bold; margin: 0; line-height: 100%;">Nguyễn Trung Tiến</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' });
+    saveAs(blob, `${selectedMonth}. BC_T${selectedMonth}_xếp loại chi bộ theo HD 01 TU.doc`);
   };
 
   const handleExportSixMonthsToExcel = () => {
@@ -345,7 +577,7 @@ export default function App() {
 
   const totalMembersCount = currentMonthSchedules.reduce((sum, i) => sum + (Number(i.sl) || 0), 0);
 
-  // XUẤT FILE WORD .DOC CHUẨN ĐỊNH DẠNG MICROSOFT WORD 100% KHÔNG LỖI
+  // XUẤT FILE WORD .DOC LỊCH HỌP CHUẨN ĐỊNH DẠNG MICROSOFT WORD 100%
   const handleExportWordDoc = () => {
     const tableRows = currentMonthSchedules.map((item, idx) => {
       const isThuyOrThuy = item.biThu && (item.biThu.includes('Trần Thị Thu Thanh Thủy') || item.biThu.includes('Nguyễn Phúc Xuân Thụy'));
@@ -509,26 +741,42 @@ export default function App() {
     saveAs(blob, `${selectedMonth}. TB_họp chi bộ T${selectedMonth}-${selectedYear}_13 chi bộ.doc`);
   };
 
-  const handlePrint = () => {
+  const handlePrintSchedule = () => {
+    setPrintDocType('schedule');
     const originalTitle = document.title;
     document.title = "";
-    window.print();
     setTimeout(() => {
+      window.print();
       document.title = originalTitle;
-    }, 1000);
+    }, 100);
   };
 
-  const sampleZaloMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
+  const handlePrintDGXL = () => {
+    setPrintDocType('dgxl');
+    const originalTitle = document.title;
+    document.title = "";
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+    }, 100);
+  };
+
+  const sampleZaloRegisterMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
 Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đăng ký lịch sinh hoạt lệ tháng ${selectedMonth}/${selectedYear} trước ngày 20 để Đảng ủy tổng hợp xin ý kiến Lãnh đạo và ban hành Thông báo chính thức.
 👉 Link đăng ký trực tuyến: ${window.location.origin + window.location.pathname}?mode=register`;
 
-  // GIAO DIỆN DÀNH CHO CÁC ĐỘI TỰ ĐĂNG KÝ
+  const sampleZaloReportMessage = `[BÁO CÁO ĐÁNH GIÁ XẾP LOẠI CHI BỘ THÁNG ${selectedMonth}/${selectedYear}]
+Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
+Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức buổi sinh hoạt lệ hoàn thành tự chấm điểm và gửi Báo cáo Đánh giá Xếp loại về Đảng ủy bộ phận.
+👉 Link gửi Báo cáo ĐGXL trực tuyến: ${window.location.origin + window.location.pathname}?mode=report`;
+
+  // GIAO DIỆN DÀNH CHO CÁC ĐỘI TỰ ĐĂNG KÝ LỊCH HỌP (mode=register)
   if (isPublicRegisterMode) {
     const selectedBranchInfo = branchDetails.find(b => b.id === teamSelectChiBo) || branchDetails[0];
 
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
         <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl shadow-xl overflow-hidden">
           <div className="bg-red-600 p-6 text-white text-center relative">
             <div className="w-12 h-12 mx-auto rounded-xl bg-yellow-400 text-red-700 flex items-center justify-center font-black text-2xl shadow mb-2">
@@ -582,7 +830,6 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                       onChange={(e) => {
                         setTeamDate(e.target.value);
                         if (e.target.value) {
-                          const [yyyy, mm, dd] = e.target.value.split('-');
                           const d = new Date(e.target.value);
                           const days = ['Chủ Nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'];
                           setTeamDayOfWeek(days[d.getDay()]);
@@ -647,12 +894,173 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
               </>
             )}
 
-            <div className="text-center pt-2">
+            <div className="flex justify-between items-center pt-2 text-xs">
+              <a 
+                href={window.location.pathname + '?mode=report'}
+                className="text-blue-600 hover:underline font-semibold"
+              >
+                👉 Chuyển sang Báo cáo ĐGXL sau họp
+              </a>
               <a 
                 href={window.location.pathname}
-                className="text-xs text-slate-500 hover:text-red-600 font-medium"
+                className="text-slate-500 hover:text-red-600 font-medium"
               >
-                ← Quay lại Bảng Quản Trị Tổng Hợp
+                ← Quay lại Bảng Quản Trị
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // GIAO DIỆN DÀNH CHO CÁC ĐỘI TỰ BÁO CÁO ĐGXL SAU HỌP (mode=report)
+  if (isPublicReportMode) {
+    const selectedBranchInfo = branchDetails.find(b => b.id === reportBranchId) || branchDetails[0];
+
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+        <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl shadow-xl overflow-hidden">
+          <div className="bg-blue-700 p-6 text-white text-center relative">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-yellow-400 text-blue-900 flex items-center justify-center font-black text-2xl shadow mb-2">
+              ★
+            </div>
+            <h2 className="text-base font-bold uppercase tracking-wide">ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT</h2>
+            <h3 className="text-lg font-black mt-1">BÁO CÁO ĐÁNH GIÁ, XẾP LOẠI SINH HOẠT CHI BỘ</h3>
+            <p className="text-xs text-blue-100 mt-1">Theo Hướng dẫn 01-HD/TU • Tháng {selectedMonth} năm {selectedYear}</p>
+          </div>
+
+          <form onSubmit={handleTeamSubmitReport} className="p-6 space-y-4">
+            {reportSubmitted ? (
+              <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                <h4 className="font-bold text-emerald-800 text-base">Gửi báo cáo thành công!</h4>
+                <p className="text-xs text-emerald-700">
+                  Kết quả đánh giá xếp loại sinh hoạt của <b>{selectedBranchInfo.name}</b> (Điểm: <b>{reportScore}</b> - Xếp loại: <b>{reportClassification}</b>) đã được lưu vào hệ thống Đảng ủy.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setReportSubmitted(false)}
+                  className="mt-2 text-xs text-blue-600 font-bold underline cursor-pointer"
+                >
+                  Báo cáo lại hoặc chọn Chi bộ khác
+                </button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">1. Chọn Chi bộ báo cáo (*)</label>
+                  <select
+                    value={reportBranchId}
+                    onChange={(e) => setReportBranchId(Number(e.target.value))}
+                    className="w-full p-2.5 border rounded-lg text-sm font-bold text-blue-800 bg-blue-50/50 border-blue-200"
+                  >
+                    {branchDetails.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} (Bí thư: {b.biThu} - {b.sl} ĐV)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">2. Số đảng viên dự / Tổng số (*)</label>
+                    <input
+                      type="text"
+                      required
+                      value={reportAttendance}
+                      onChange={(e) => setReportAttendance(e.target.value)}
+                      placeholder="VD: 18/18 hoặc 9/9"
+                      className="w-full p-2.5 border rounded-lg text-sm bg-white font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">3. Ngày họp thực tế (*)</label>
+                    <input
+                      type="date"
+                      required
+                      value={reportMeetingDate}
+                      onChange={(e) => setReportMeetingDate(e.target.value)}
+                      className="w-full p-2.5 border rounded-lg text-sm bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">4. Điểm tự đánh giá (0-100) (*)</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      max={100}
+                      value={reportScore}
+                      onChange={(e) => {
+                        const score = Number(e.target.value);
+                        setReportScore(score);
+                        if (score >= 90) setReportClassification('Tốt');
+                        else if (score >= 70) setReportClassification('Khá');
+                        else if (score >= 50) setReportClassification('Trung bình');
+                        else setReportClassification('Kém');
+                      }}
+                      className="w-full p-2.5 border rounded-lg text-base font-black text-center text-blue-700 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">5. Mức xếp loại chi bộ (*)</label>
+                    <select
+                      value={reportClassification}
+                      onChange={(e) => setReportClassification(e.target.value)}
+                      className="w-full p-2.5 border rounded-lg text-sm font-bold text-emerald-700 bg-emerald-50 border-emerald-200"
+                    >
+                      <option value="Tốt">Tốt (Từ 90-100 điểm)</option>
+                      <option value="Khá">Khá (Từ 70-89 điểm)</option>
+                      <option value="Trung bình">Trung bình (Từ 50-69 điểm)</option>
+                      <option value="Kém">Kém (Dưới 50 điểm)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    6. Thuyết minh điểm trừ / Ghi chú biến động (nếu có)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reportDeductionNote}
+                    onChange={(e) => setReportDeductionNote(e.target.value)}
+                    placeholder="VD: Có 01 đ/c vắng mặt có lý do (chuyển sinh hoạt tạm thời), trừ 0 điểm..."
+                    className="w-full p-2.5 border rounded-lg text-xs bg-white"
+                  />
+                </div>
+
+                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800">
+                  📌 <b>Theo HD 01-HD/TU:</b> Chi bộ họp đạt từ 90-100 điểm xếp loại <b>Tốt</b>; từ 70-89 điểm xếp loại <b>Khá</b>; từ 50-69 điểm xếp loại <b>Trung bình</b>; dưới 50 điểm xếp loại <b>Kém</b>.
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  Gửi Báo Cáo Đánh Giá Xếp Loại
+                </button>
+              </>
+            )}
+
+            <div className="flex justify-between items-center pt-2 text-xs">
+              <a 
+                href={window.location.pathname + '?mode=register'}
+                className="text-red-600 hover:underline font-semibold"
+              >
+                👉 Chuyển sang Đăng ký Lịch họp (Trước ngày 20)
+              </a>
+              <a 
+                href={window.location.pathname}
+                className="text-slate-500 hover:text-blue-600 font-medium"
+              >
+                ← Quay lại Bảng Quản Trị
               </a>
             </div>
           </form>
@@ -682,36 +1090,60 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                     Cán bộ tổng hợp
                   </span>
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">Quy trình Đăng ký ngày 20, Duyệt ngày 25, Lưu thông báo, ĐGXL hằng tháng & Báo cáo 06 Tháng</p>
+                <p className="text-xs text-[var(--text-muted)]">Quy trình Đăng ký ngày 20, Duyệt ngày 25, Lưu thông báo, ĐGXL hằng tháng theo HD 01 & Báo cáo 06 Tháng</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <button 
-                onClick={handleExportWordDoc}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm transition-all cursor-pointer"
-                title="Tải về file Word (.DOC) chuẩn 100% mở bằng Microsoft Word không bao giờ lỗi"
-              >
-                <FileText className="w-4 h-4" />
-                Tải File Word (.DOC)
-              </button>
+              {activeTab === 'dgxl' ? (
+                <>
+                  <button 
+                    onClick={handleExportDGXLWordDoc}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm transition-all cursor-pointer"
+                    title="Tải về file Word (.DOC) ĐGXL chuẩn 1 trang A4 theo Hướng dẫn 01-HD/TU"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Tải File Word (.DOC) ĐGXL
+                  </button>
+
+                  <button 
+                    onClick={handlePrintDGXL}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all cursor-pointer"
+                    title="In bảng ĐGXL trình ký Bí thư Đảng ủy (Chuẩn 1 trang A4)"
+                  >
+                    <Printer className="w-4 h-4" />
+                    In ĐGXL (1 Trang)
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={handleExportWordDoc}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm transition-all cursor-pointer"
+                    title="Tải về file Word (.DOC) chuẩn 100% mở bằng Microsoft Word không bao giờ lỗi"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Tải File Word (.DOC)
+                  </button>
+
+                  <button 
+                    onClick={handlePrintSchedule}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all cursor-pointer"
+                    title="In thông báo lịch sinh hoạt trình ký Bí thư Đảng ủy (Chuẩn khít 1 trang A4)"
+                  >
+                    <Printer className="w-4 h-4" />
+                    In Thông Báo (1 Trang)
+                  </button>
+                </>
+              )}
 
               <button 
                 onClick={() => setIsShareModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
-                title="Tạo thông báo và lấy link gửi cho các Đội tự đăng ký ngày họp"
+                title="Tạo link chia sẻ cho các Chi bộ (Đăng ký lịch họp & Báo cáo ĐGXL)"
               >
                 <Share2 className="w-4 h-4" />
-                Gửi Link Đăng Ký (Ngày 20)
-              </button>
-
-              <button 
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all cursor-pointer"
-                title="In thông báo lịch sinh hoạt trình ký Bí thư Đảng ủy (Chuẩn khít 1 trang A4)"
-              >
-                <Printer className="w-4 h-4" />
-                In Thông Báo (1 Trang)
+                Gửi Link Chi Bộ
               </button>
 
               <button 
@@ -728,7 +1160,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             {[
               { id: 'meetings', label: '📅 1. Lịch Họp & Duyệt Trình Ký (Ngày 20-25)', icon: Calendar },
               { id: 'archive', label: '📁 2. Kho Lưu Trữ Thông Báo Lịch Họp', icon: Archive },
-              { id: 'dgxl', label: '⭐ 3. Đánh Giá Xếp Loại Hằng Tháng (ĐGXL)', icon: FileCheck2 },
+              { id: 'dgxl', label: '⭐ 3. Đánh Giá Xếp Loại Hằng Tháng (HD 01-HD/TU)', icon: FileCheck2 },
               { id: 'sixmonths', label: '📊 4. Biểu Tổng Hợp 06 Tháng / Năm', icon: BookOpen },
               { id: 'dashboard', label: '📈 5. Tổng quan Đảng bộ (157 ĐV)', icon: Sparkles },
               { id: 'members', label: '👥 6. Danh sách Đảng viên', icon: Users }
@@ -753,299 +1185,340 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
           </div>
         </header>
 
-        {/* PRINT DOCUMENT FORMAT - CỠ CHỮ CĂN CỨ 14PT CHUẨN THỂ THỨC VĂN BẢN ĐẢNG, KHÍT 1 TRANG A4 */}
-        <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13pt', lineHeight: '1.2' }}>
-          {/* Header 2 columns */}
-          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '4pt' }}>
-            <tbody>
-              <tr style={{ border: 'none' }}>
-                <td style={{ width: '56%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '11pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
-                  <div style={{ fontSize: '11pt', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
-                  <div style={{ fontSize: '10pt', margin: '1px 0' }}>*</div>
-                  <div style={{ fontSize: '12pt' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
-                </td>
-                <td style={{ width: '44%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
-                  <div style={{ height: '12pt' }}></div>
-                  <div style={{ fontSize: '12pt', fontStyle: 'italic' }}>
-                    An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, '0')} năm {selectedMonth === 1 ? selectedYear - 1 : selectedYear}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        {/* PRINT DOCUMENT 1: THÔNG BÁO LỊCH HỌP (1 TRANG A4) */}
+        {printDocType === 'schedule' && (
+          <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13pt', lineHeight: '1.2' }}>
+            <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '4pt' }}>
+              <tbody>
+                <tr style={{ border: 'none' }}>
+                  <td style={{ width: '56%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '11pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                    <div style={{ fontSize: '11pt', fontWeight: 'bold' }}>ĐẢNG ỦY BỘ PHẬN CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                    <div style={{ fontSize: '10pt', margin: '1px 0' }}>*</div>
+                    <div style={{ fontSize: '12pt' }}>Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -TB/ĐU</div>
+                  </td>
+                  <td style={{ width: '44%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                    <div style={{ height: '12pt' }}></div>
+                    <div style={{ fontSize: '12pt', fontStyle: 'italic' }}>
+                      An Giang, ngày &nbsp;&nbsp;&nbsp;&nbsp; tháng {String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, '0')} năm {selectedMonth === 1 ? selectedYear - 1 : selectedYear}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-          {/* Title */}
-          <div style={{ textAlign: 'center', margin: '4pt 0 2pt 0' }}>
-            <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>THÔNG BÁO</div>
-            <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>
-              Lịch sinh hoạt lệ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear} của các chi bộ trực thuộc
+            <div style={{ textAlign: 'center', margin: '4pt 0 2pt 0' }}>
+              <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>THÔNG BÁO</div>
+              <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>
+                Lịch sinh hoạt lệ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear} của các chi bộ trực thuộc
+              </div>
+              <div style={{ fontSize: '12pt' }}>-----</div>
             </div>
-            <div style={{ fontSize: '12pt' }}>-----</div>
-          </div>
 
-          {/* Paragraphs Cỡ chữ 14pt chuẩn theo yêu cầu */}
-          <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '2pt', fontSize: '14pt', lineHeight: '1.25' }}>
-            Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
-          </div>
-          <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '4pt', fontSize: '14pt', lineHeight: '1.25' }}>
-            Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
-          </div>
+            <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '2pt', fontSize: '14pt', lineHeight: '1.25' }}>
+              Căn cứ Quy chế làm việc của Đảng ủy Chi cục Quản lý thị trường và Quy chế làm việc của các chi bộ trực thuộc nhiệm kỳ 2025-2030.
+            </div>
+            <div style={{ textIndent: '30pt', textAlign: 'justify', marginBottom: '4pt', fontSize: '14pt', lineHeight: '1.25' }}>
+              Theo đăng ký lịch sinh hoạt lệ chi bộ tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}. Đảng ủy bộ phận Chi cục Quản lý thị trường thông báo thời gian, địa điểm sinh hoạt của các chi bộ, như sau:
+            </div>
 
-          {/* 13 Branch Schedule Table */}
-          <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11pt', margin: '3pt 0' }}>
-            <thead>
-              <tr style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '13pt' }}>
-                <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>S<br />TT</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Chi bộ</th>
-                <th style={{ border: '1px solid black', padding: '3px 2px', width: '8%' }}>Số<br />lượng</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Thời<br />gian</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '18%' }}>Địa điểm</th>
-                <th style={{ border: '1px solid black', padding: '3px 4px', width: '24%' }}>Bí thư,<br />điện thoại</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentMonthSchedules.map((item, idx) => {
-                const isThuyOrThuy = item.biThu && (item.biThu.includes('Trần Thị Thu Thanh Thủy') || item.biThu.includes('Nguyễn Phúc Xuân Thụy'));
-                const isThuyLong = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
-                
-                // Tách Ngày và Thứ thành 2 dòng riêng biệt
-                let datePart = item.thoiGian || '';
-                let dowPart = '';
-                if (item.thoiGian && item.thoiGian.includes('(')) {
-                  const parts = item.thoiGian.split('(');
-                  datePart = parts[0].trim();
-                  dowPart = '(' + parts[1].trim();
-                }
+            <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '11pt', margin: '3pt 0' }}>
+              <thead>
+                <tr style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '13pt' }}>
+                  <th style={{ border: '1px solid black', padding: '3px 2px', width: '6%' }}>S<br />TT</th>
+                  <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Chi bộ</th>
+                  <th style={{ border: '1px solid black', padding: '3px 2px', width: '8%' }}>Số<br />lượng</th>
+                  <th style={{ border: '1px solid black', padding: '3px 4px', width: '22%' }}>Thời<br />gian</th>
+                  <th style={{ border: '1px solid black', padding: '3px 4px', width: '18%' }}>Địa điểm</th>
+                  <th style={{ border: '1px solid black', padding: '3px 4px', width: '24%' }}>Bí thư,<br />điện thoại</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentMonthSchedules.map((item, idx) => {
+                  const isThuyOrThuy = item.biThu && (item.biThu.includes('Trần Thị Thu Thanh Thủy') || item.biThu.includes('Nguyễn Phúc Xuân Thụy'));
+                  const isThuyLong = item.biThu && item.biThu.includes('Trần Thị Thu Thanh Thủy');
+                  
+                  let datePart = item.thoiGian || '';
+                  let dowPart = '';
+                  if (item.thoiGian && item.thoiGian.includes('(')) {
+                    const parts = item.thoiGian.split('(');
+                    datePart = parts[0].trim();
+                    dowPart = '(' + parts[1].trim();
+                  }
 
-                return (
-                  <tr key={idx} style={{ height: '22px' }}>
-                    <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                  return (
+                    <tr key={idx} style={{ height: '22px' }}>
+                      <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
+                      <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
+                      <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
+                        <div>{datePart}</div>
+                        {dowPart && <div style={{ fontSize: '10pt' }}>{dowPart}</div>}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
+                      <td style={{ border: '1px solid black', padding: '1px 2px', textAlign: 'center', lineHeight: '1.1' }}>
+                        <div style={{ 
+                          fontSize: isThuyOrThuy ? '12pt' : '13pt', 
+                          letterSpacing: isThuyLong ? '-0.3px' : 'normal',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 'bold'
+                        }}>
+                          {item.biThu}
+                        </div>
+                        <div style={{ fontSize: '10.5pt' }}>{item.sdt}</div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ fontWeight: 'bold', textAlign: 'center' }}>
+                  <td colSpan="2" style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'center' }}>TỔNG SỐ</td>
+                  <td style={{ border: '1px solid black', padding: '3px 2px' }}>{totalMembersCount}</td>
+                  <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                  <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                  <td style={{ border: '1px solid black', padding: '3px' }}></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '4pt' }}>
+              <tbody>
+                <tr style={{ border: 'none' }}>
+                  <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}><u>Nơi nhận:</u></div>
+                    <div style={{ fontSize: '12pt', lineHeight: '1.2' }}>
+                      - Đảng ủy Sở Công Thương;<br />
+                      - Bí thư các Chi bộ trực thuộc;<br />
+                      - Lưu: Đảng ủy.
+                    </div>
+                  </td>
+                  <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>BÍ THƯ</div>
+                    <div style={{ height: '38pt' }}></div>
+                    <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* PRINT DOCUMENT 2: DANH SÁCH ĐGXL THEO HD 01-HD/TU (1 TRANG A4) */}
+        {printDocType === 'dgxl' && (
+          <div className="hidden print-page text-black bg-white" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', fontSize: '13pt', lineHeight: '1.2' }}>
+            <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginBottom: '4pt' }}>
+              <tbody>
+                <tr style={{ border: 'none' }}>
+                  <td style={{ width: '54%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '11pt' }}>ĐẢNG BỘ SỞ CÔNG THƯƠNG TỈNH AN GIANG</div>
+                    <div style={{ fontSize: '11pt', fontWeight: 'bold' }}>ĐẢNG ỦY CHI CỤC QUẢN LÝ THỊ TRƯỜNG</div>
+                    <div style={{ fontSize: '10pt', margin: '1px 0' }}>*</div>
+                  </td>
+                  <td style={{ width: '46%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0, whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>ĐẢNG CỘNG SẢN VIỆT NAM</div>
+                    <div style={{ height: '10pt' }}></div>
+                    <div style={{ fontSize: '12pt', fontStyle: 'italic' }}>
+                      An Giang, ngày 10 tháng {String(selectedMonth).padStart(2, '0')} năm {selectedYear}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ textAlign: 'center', margin: '4pt 0 4pt 0' }}>
+              <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>DANH SÁCH</div>
+              <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>
+                TỔNG HỢP ĐÁNH GIÁ, XẾP LOẠI CHẤT LƯỢNG SINH HOẠT CHI BỘ
+              </div>
+              <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>
+                THÁNG {String(selectedMonth).padStart(2, '0')} NĂM {selectedYear}
+              </div>
+              <div style={{ fontSize: '11pt' }}>-----</div>
+            </div>
+
+            <table className="schedule-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid black', fontSize: '10.5pt', margin: '3pt 0' }}>
+              <thead>
+                <tr style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '11pt', backgroundColor: '#f2f2f2' }}>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '2px', width: '4%' }}>S<br/>T<br/>T</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '2px 4px', width: '16%' }}>Tên đơn vị</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '2px', width: '9%' }}>Số<br/>lượng<br/>đảng viên</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '2px', width: '10%' }}>Ngày<br/>họp<br/>chi<br/>bộ</th>
+                  <th colSpan="5" style={{ border: '1px solid black', padding: '2px' }}>Mức đánh giá xếp loại sau buổi sinh hoạt chi bộ hằng tháng</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '2px 4px', width: '23%' }}>Ghi chú<br/>(thuyết minh điểm trừ)</th>
+                </tr>
+                <tr style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '10.5pt', backgroundColor: '#f2f2f2' }}>
+                  <th style={{ border: '1px solid black', padding: '2px', width: '9%' }}>KQ số điểm<br/>được<br/>đánh giá</th>
+                  <th style={{ border: '1px solid black', padding: '2px', width: '7%' }}>Tốt</th>
+                  <th style={{ border: '1px solid black', padding: '2px', width: '7%' }}>Khá</th>
+                  <th style={{ border: '1px solid black', padding: '2px', width: '7%' }}>Trung<br/>bình</th>
+                  <th style={{ border: '1px solid black', padding: '2px', width: '7%' }}>Kém</th>
+                </tr>
+                <tr style={{ textAlign: 'center', fontStyle: 'italic', fontSize: '9.5pt', backgroundColor: '#fafafa' }}>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>1</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>2</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>3</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>4</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>5</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>6</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>7</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>8</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>9</td>
+                  <td style={{ border: '1px solid black', padding: '1px' }}>10</td>
+                </tr>
+              </thead>
+              <tbody>
+                {currentMonthDGXL.map((item, idx) => (
+                  <tr key={idx} style={{ height: '20px' }}>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center' }}>{idx + 1}</td>
                     <td style={{ border: '1px solid black', padding: '2px 4px' }}>{item.chiBo}</td>
-                    <td style={{ border: '1px solid black', padding: '2px 2px', textAlign: 'center' }}>{item.sl}</td>
-                    <td style={{ border: '1px solid black', padding: '2px 3px', textAlign: 'center', lineHeight: '1.15' }}>
-                      <div>{datePart}</div>
-                      {dowPart && <div style={{ fontSize: '10pt' }}>{dowPart}</div>}
-                    </td>
-                    <td style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>{item.diaDiem}</td>
-                    <td style={{ border: '1px solid black', padding: '1px 2px', textAlign: 'center', lineHeight: '1.1' }}>
-                      <div style={{ 
-                        fontSize: isThuyOrThuy ? '12pt' : '13pt', 
-                        letterSpacing: isThuyLong ? '-0.3px' : 'normal',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 'bold'
-                      }}>
-                        {item.biThu}
-                      </div>
-                      <div style={{ fontSize: '10.5pt' }}>{item.sdt}</div>
-                    </td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center' }}>{item.sl}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center' }}>{item.ngayHop}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{item.diemDG}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{item.mucXepLoai === 'Tốt' ? 'x' : ''}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{item.mucXepLoai === 'Khá' ? 'x' : ''}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{item.mucXepLoai === 'Trung bình' ? 'x' : ''}</td>
+                    <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{item.mucXepLoai === 'Kém' ? 'x' : ''}</td>
+                    <td style={{ border: '1px solid black', padding: '2px 4px', fontSize: '10pt' }}>{item.ghiChuTruDiem || ''}</td>
                   </tr>
-                );
-              })}
-              <tr style={{ fontWeight: 'bold', textAlign: 'center' }}>
-                <td colSpan="2" style={{ border: '1px solid black', padding: '3px 4px', textAlign: 'center' }}>TỔNG SỐ</td>
-                <td style={{ border: '1px solid black', padding: '3px 2px' }}>{totalMembersCount}</td>
-                <td style={{ border: '1px solid black', padding: '3px' }}></td>
-                <td style={{ border: '1px solid black', padding: '3px' }}></td>
-                <td style={{ border: '1px solid black', padding: '3px' }}></td>
-              </tr>
-            </tbody>
-          </table>
+                ))}
+                <tr style={{ fontWeight: 'bold', textAlign: 'center', height: '20px' }}>
+                  <td colSpan="2" style={{ border: '1px solid black', padding: '2px 4px', textAlign: 'center' }}>TỔNG CỘNG</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}>157</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}></td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}></td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}>{currentMonthDGXL.filter(d => d.mucXepLoai === 'Tốt').length}</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}>{currentMonthDGXL.filter(d => d.mucXepLoai === 'Khá').length}</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}>{currentMonthDGXL.filter(d => d.mucXepLoai === 'Trung bình').length}</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}>{currentMonthDGXL.filter(d => d.mucXepLoai === 'Kém').length}</td>
+                  <td style={{ border: '1px solid black', padding: '2px' }}></td>
+                </tr>
+              </tbody>
+            </table>
 
-          {/* Footer Table */}
-          <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '4pt' }}>
-            <tbody>
-              <tr style={{ border: 'none' }}>
-                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline' }}><u>Nơi nhận:</u></div>
-                  <div style={{ fontSize: '12pt', lineHeight: '1.25' }}>
-                    - Đảng ủy Sở Công Thương;<br />
-                    - Bí thư các Chi bộ trực thuộc;<br />
-                    - Lưu: Đảng ủy.
-                  </div>
-                </td>
-                <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
-                  <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>BÍ THƯ</div>
-                  <div style={{ height: '40pt' }}></div>
-                  <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', marginTop: '4pt' }}>
+              <tbody>
+                <tr style={{ border: 'none' }}>
+                  <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}><u>Nơi nhận:</u></div>
+                    <div style={{ fontSize: '12pt', lineHeight: '1.2' }}>
+                      - Đảng ủy Sở;<br />
+                      - Đảng ủy Chi cục QLTT;<br />
+                      - Lưu: ĐU.
+                    </div>
+                  </td>
+                  <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', border: 'none', padding: 0 }}>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>T/M ĐẢNG ỦY</div>
+                    <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>BÍ THƯ</div>
+                    <div style={{ height: '38pt' }}></div>
+                    <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>Nguyễn Trung Tiến</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* MAIN BODY CONTENT */}
-        <main className="max-w-7xl mx-auto p-6 flex-1 w-full no-print">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6 no-print">
 
           {/* TAB 1: LỊCH HỌP & DUYỆT TRÌNH KÝ */}
           {activeTab === 'meetings' && (
             <div className="space-y-6">
-              
-              {/* QUY TRÌNH BANNER */}
-              <div className="card-glass p-5 border-l-4 border-amber-500 bg-linear-to-r from-amber-500/5 to-transparent">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-amber-600" />
-                      <h3 className="text-base font-bold text-[var(--text-main)]">
-                        Quy trình Quản lý Lịch họp Chi bộ định kỳ (Ngày 20 - 25 hàng tháng)
-                      </h3>
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">
-                      1. Ngày 20 gửi link Zalo cho các Đội $ightarrow$ 2. Đội tự chọn ngày $ightarrow$ 3. Trước ngày 25 báo cáo Lãnh đạo $ightarrow$ 4. Bấm <b>'Lãnh đạo đã Thống nhất & Lưu File'</b> $ightarrow$ 5. Bấm <b>'Tải File Word'</b> hoặc <b>'In Thông Báo (1 Trang)'</b>.
-                    </p>
+              <div className="card-glass p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[var(--text-main)]">
+                      Lịch Sinh Hoạt Lệ 13 Chi Bộ Trực Thuộc Tháng {selectedMonth}/{selectedYear}
+                    </h3>
+                    <span className="badge bg-blue-50 text-blue-700 border border-blue-200">
+                      Bí thư: Nguyễn Trung Tiến
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold">Tháng:</span>
-                      <select 
-                        value={selectedMonth} 
-                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                        className="w-24 text-xs font-bold"
-                      >
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold">Năm:</span>
-                      <select 
-                        value={selectedYear} 
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        className="w-24 text-xs font-bold"
-                      >
-                        {[2025, 2026, 2027].map(y => <option key={y} value={y}>Năm {y}</option>)}
-                      </select>
-                    </div>
-                  </div>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Đăng ký trước ngày 20 • Thống nhất lãnh đạo ngày 25 • Ban hành thông báo chính thức
+                  </p>
                 </div>
-              </div>
 
-              {/* ACTION BAR */}
-              <div className="card-glass p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="badge bg-blue-50 text-blue-700 border border-blue-200">
-                    Đã đăng ký: {currentMonthSchedules.filter(i => i.thoiGian && i.thoiGian !== 'Chưa đăng ký').length}/13 Chi bộ
-                  </span>
-                  <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Tổng số đảng viên: {totalMembersCount} ĐV
-                  </span>
-                </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">Tháng:</span>
+                    <select 
+                      value={selectedMonth} 
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="w-24 text-xs font-bold"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
+                    </select>
+                  </div>
 
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={() => setIsShareModalOpen(true)}
-                    className="px-3.5 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Gửi Link Zalo (Ngày 20)
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">Năm:</span>
+                    <select 
+                      value={selectedYear} 
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="w-24 text-xs font-bold"
+                    >
+                      {[2025, 2026, 2027].map(y => <option key={y} value={y}>Năm {y}</option>)}
+                    </select>
+                  </div>
 
                   <button
                     onClick={handleApproveAndArchive}
-                    className="px-3.5 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    title="Lãnh đạo đồng ý thống nhất và tự động lưu vào Kho lưu trữ để sau này coi lại"
+                    className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Save className="w-4 h-4" />
-                    Lãnh đạo Thống nhất & Lưu File
-                  </button>
-
-                  <button
-                    onClick={handleExportWordDoc}
-                    className="px-3.5 py-2 rounded-md bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    title="Xuất file Word .DOC chuẩn 100% mở bằng MS Word không bao giờ bị lỗi"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Tải File Word (.DOC)
-                  </button>
-
-                  <button
-                    onClick={handlePrint}
-                    className="px-3.5 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    title="In chuẩn khít 1 trang A4"
-                  >
-                    <Printer className="w-4 h-4" />
-                    In Thông Báo (1 Trang)
+                    <CheckCheck className="w-4 h-4" />
+                    Lãnh Đạo Thống Nhất & Lưu File
                   </button>
                 </div>
               </div>
 
-              {/* SCHEDULE TABLE */}
               <div className="card-glass p-1">
                 <div className="table-container">
                   <table>
                     <thead>
                       <tr>
-                        <th className="w-12 text-center">STT</th>
-                        <th>Chi bộ</th>
-                        <th className="w-16 text-center">Số lượng ĐV</th>
-                        <th className="w-60">Thời gian sinh hoạt (Đăng ký)</th>
-                        <th>Địa điểm (Mặc định)</th>
-                        <th>Bí thư Chi bộ</th>
-                        <th className="w-64">Ghi chú biến động đảng viên</th>
-                        <th className="text-center">Trạng thái</th>
+                        <th className="w-10 text-center">STT</th>
+                        <th className="w-48">Chi bộ</th>
+                        <th className="w-16 text-center">Số lượng</th>
+                        <th className="w-48">Thời gian sinh hoạt</th>
+                        <th className="w-44">Địa điểm</th>
+                        <th className="w-48">Bí thư, điện thoại</th>
+                        <th>Ghi chú biến động</th>
+                        <th className="w-32 text-center">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentMonthSchedules.map((item, idx) => (
                         <tr key={item.chiBoId}>
                           <td className="text-center text-xs text-[var(--text-muted)]">{idx + 1}</td>
-                          <td className="font-bold text-xs text-red-600 dark:text-red-400">{item.chiBo}</td>
-                          <td className="text-center">
-                            <input
-                              type="number"
-                              value={item.sl}
-                              onChange={(e) => handleUpdateSchedule(item.chiBoId, 'sl', Number(e.target.value))}
-                              className="w-16 text-center text-xs font-bold"
-                            />
-                          </td>
+                          <td className="font-bold text-xs">{item.chiBo}</td>
+                          <td className="text-center font-bold text-red-600 text-xs">{item.sl}</td>
                           <td>
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="date"
-                                min={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
-                                max={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${new Date(selectedYear, selectedMonth, 0).getDate()}`}
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    const [yyyy, mm, dd] = e.target.value.split('-');
-                                    const d = new Date(e.target.value);
-                                    const days = ['Chủ Nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'];
-                                    const dow = days[d.getDay()];
-                                    const formatted = `${dd}/${mm}/${yyyy} (${dow})`;
-                                    handleUpdateSchedule(item.chiBoId, 'thoiGian', formatted);
-                                  }
-                                }}
-                                className="w-9 px-1 py-1 text-xs cursor-pointer bg-slate-50 dark:bg-slate-800"
-                                title="Bấm vào để chọn ngày trên lịch (tự động hiện Thứ)"
-                              />
-                              <input
-                                type="text"
-                                placeholder="VD: 07/8/2026 (thứ Sáu)"
-                                value={item.thoiGian === 'Chưa đăng ký' ? '' : item.thoiGian}
-                                onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
-                                className="flex-1 text-xs font-bold text-blue-700 dark:text-blue-300"
-                              />
-                            </div>
+                            <input
+                              type="text"
+                              value={item.thoiGian}
+                              onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
+                              placeholder="VD: 03/9/2026 (thứ Năm)"
+                              className="text-xs font-medium text-blue-600 dark:text-blue-400"
+                            />
                           </td>
                           <td>
                             <input
                               type="text"
                               value={item.diaDiem}
                               onChange={(e) => handleUpdateSchedule(item.chiBoId, 'diaDiem', e.target.value)}
-                              className="text-xs font-medium"
+                              className="text-xs"
                             />
                           </td>
-                          <td className="font-semibold text-xs">
-                            <div>{item.biThu}</div>
-                            <div className="text-[11px] font-mono text-[var(--text-muted)]">{item.sdt}</div>
+                          <td>
+                            <div className="font-bold text-xs">{item.biThu}</div>
+                            <div className="text-xs text-[var(--text-muted)] font-mono">{item.sdt}</div>
                           </td>
                           <td>
                             <input
                               type="text"
-                              placeholder="VD: Miễn sinh hoạt 01 đ/c..."
+                              placeholder="Thêm ghi chú..."
                               value={item.ghiChu || ''}
                               onChange={(e) => handleUpdateSchedule(item.chiBoId, 'ghiChu', e.target.value)}
                               className="text-xs text-amber-700 dark:text-amber-300"
@@ -1118,7 +1591,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                             setSelectedYear(arc.nam);
                             setActiveTab('meetings');
                           }}
-                          className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs font-semibold cursor-pointer"
                         >
                           Mở lại Tháng {arc.thang}
                         </button>
@@ -1130,15 +1603,22 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
             </div>
           )}
 
-          {/* TAB 3: ĐÁNH GIÁ XẾP LOẠI CHẤT LƯỢNG SINH HOẠT HẰNG THÁNG (ĐGXL) */}
+          {/* TAB 3: ĐÁNH GIÁ XẾP LOẠI CHẤT LƯỢNG SINH HOẠT HẰNG THÁNG (ĐGXL THEO HD 01-HD/TU) */}
           {activeTab === 'dgxl' && (
             <div className="space-y-6">
               <div className="card-glass p-5 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text-main)]">
-                    Bảng Tổng Hợp Đánh Giá, Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Tháng {selectedMonth}/{selectedYear}
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">Theo dõi điểm số, mức xếp loại (Tốt, Khá, TB, Kém) và thuyết minh điểm trừ sau mỗi kỳ họp</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[var(--text-main)]">
+                      Bảng Tổng Hợp Đánh Giá, Xếp Loại Chất Lượng Sinh Hoạt Chi Bộ Tháng {selectedMonth}/{selectedYear}
+                    </h3>
+                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Chuẩn Hướng Dẫn 01-HD/TU
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Khung đánh giá 10 cột chuẩn: Điểm số, Tự động phân loại Tốt (≥90), Khá (70-89), TB (50-69), Kém (&lt;50) & Thuyết minh điểm trừ
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -1160,25 +1640,46 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
 
                   <button 
                     onClick={handleExportDGXLToExcel}
-                    className="px-3 py-2 bg-emerald-600 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-all"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" /> Xuất Excel ĐGXL
                   </button>
                 </div>
               </div>
 
+              {/* BẢNG 10 CỘT THEO HƯỚNG DẪN 01-HD/TU */}
               <div className="card-glass p-1">
                 <div className="table-container">
                   <table>
                     <thead>
                       <tr>
-                        <th className="w-12 text-center">STT</th>
-                        <th>Tên đơn vị</th>
-                        <th className="w-20 text-center">Số lượng ĐV</th>
-                        <th>Ngày họp chi bộ</th>
-                        <th className="w-24 text-center">Điểm đánh giá</th>
-                        <th className="w-36 text-center">Mức xếp loại</th>
-                        <th>Ghi chú (Thuyết minh điểm trừ)</th>
+                        <th rowSpan="2" className="w-10 text-center">STT</th>
+                        <th rowSpan="2" className="w-48">Tên đơn vị</th>
+                        <th rowSpan="2" className="w-24 text-center">Số lượng đảng viên</th>
+                        <th rowSpan="2" className="w-28 text-center">Ngày họp chi bộ</th>
+                        <th colSpan="5" className="text-center bg-blue-50/50 dark:bg-blue-950/30">
+                          Mức đánh giá xếp loại sau buổi sinh hoạt chi bộ hằng tháng
+                        </th>
+                        <th rowSpan="2" className="w-64">Ghi chú (thuyết minh điểm trừ)</th>
+                      </tr>
+                      <tr>
+                        <th className="w-24 text-center">KQ số điểm</th>
+                        <th className="w-16 text-center text-emerald-700 dark:text-emerald-400">Tốt</th>
+                        <th className="w-16 text-center text-blue-700 dark:text-blue-400">Khá</th>
+                        <th className="w-16 text-center text-amber-700 dark:text-amber-400">Trung bình</th>
+                        <th className="w-16 text-center text-red-700 dark:text-red-400">Kém</th>
+                      </tr>
+                      <tr className="text-center text-[10px] text-[var(--text-muted)] bg-slate-50 dark:bg-slate-900/50">
+                        <th>1</th>
+                        <th>2</th>
+                        <th>3</th>
+                        <th>4</th>
+                        <th>5</th>
+                        <th>6</th>
+                        <th>7</th>
+                        <th>8</th>
+                        <th>9</th>
+                        <th>10</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1186,39 +1687,67 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                         <tr key={d.chiBoId}>
                           <td className="text-center text-xs text-[var(--text-muted)]">{idx + 1}</td>
                           <td className="font-bold text-xs">{d.chiBo}</td>
-                          <td className="text-center font-bold text-xs">{d.sl}</td>
-                          <td className="text-xs font-medium text-blue-600 dark:text-blue-400">{d.ngayHop}</td>
                           <td className="text-center">
                             <input
-                              type="number"
-                              value={d.diemDG}
-                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'diemDG', Number(e.target.value))}
+                              type="text"
+                              value={d.sl}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'sl', e.target.value)}
+                              placeholder="18/18"
                               className="w-16 text-center font-bold text-xs"
                             />
                           </td>
                           <td className="text-center">
-                            <select
-                              value={d.mucXepLoai}
-                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'mucXepLoai', e.target.value)}
-                              className="text-xs font-bold"
-                            >
-                              <option value="Tốt">Tốt</option>
-                              <option value="Khá">Khá</option>
-                              <option value="Trung bình">Trung bình</option>
-                              <option value="Kém">Kém</option>
-                            </select>
+                            <input
+                              type="text"
+                              value={d.ngayHop}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'ngayHop', e.target.value)}
+                              className="w-24 text-center text-xs font-medium text-blue-600 dark:text-blue-400"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={d.diemDG}
+                              onChange={(e) => handleUpdateDGXL(d.chiBoId, 'diemDG', Number(e.target.value))}
+                              className="w-16 text-center font-black text-xs text-blue-700 dark:text-blue-300"
+                            />
+                          </td>
+                          <td className="text-center font-black text-emerald-600">
+                            {d.mucXepLoai === 'Tốt' ? '✓' : ''}
+                          </td>
+                          <td className="text-center font-black text-blue-600">
+                            {d.mucXepLoai === 'Khá' ? '✓' : ''}
+                          </td>
+                          <td className="text-center font-black text-amber-600">
+                            {d.mucXepLoai === 'Trung bình' ? '✓' : ''}
+                          </td>
+                          <td className="text-center font-black text-red-600">
+                            {d.mucXepLoai === 'Kém' ? '✓' : ''}
                           </td>
                           <td>
                             <input
                               type="text"
-                              placeholder="Ghi rõ lý do trừ điểm..."
-                              value={d.ghiChuTruDiem}
+                              placeholder="Thuyết minh lý do trừ điểm hoặc ghi chú..."
+                              value={d.ghiChuTruDiem || ''}
                               onChange={(e) => handleUpdateDGXL(d.chiBoId, 'ghiChuTruDiem', e.target.value)}
                               className="text-xs"
                             />
                           </td>
                         </tr>
                       ))}
+                      <tr className="font-bold bg-slate-100/70 dark:bg-slate-800/70">
+                        <td colSpan="2" className="text-center text-xs uppercase">TỔNG CỘNG</td>
+                        <td className="text-center text-xs text-red-600">157</td>
+                        <td></td>
+                        <td></td>
+                        <td className="text-center text-xs text-emerald-600">{currentMonthDGXL.filter(d => d.mucXepLoai === 'Tốt').length}</td>
+                        <td className="text-center text-xs text-blue-600">{currentMonthDGXL.filter(d => d.mucXepLoai === 'Khá').length}</td>
+                        <td className="text-center text-xs text-amber-600">{currentMonthDGXL.filter(d => d.mucXepLoai === 'Trung bình').length}</td>
+                        <td className="text-center text-xs text-red-600">{currentMonthDGXL.filter(d => d.mucXepLoai === 'Kém').length}</td>
+                        <td></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -1518,7 +2047,7 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
 
         </main>
 
-        {/* MODAL: TẠO THÔNG BÁO VÀ LẤY LINK */}
+        {/* MODAL: CHIA SẺ LINK VÀ MẪU TIN NHẮN ZALO CHO CHI BỘ */}
         {isShareModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
@@ -1526,59 +2055,133 @@ Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đ
                 <div className="flex items-center gap-2">
                   <Share2 className="w-5 h-5 text-indigo-600" />
                   <h3 className="font-bold text-base text-[var(--text-main)]">
-                    Tạo Thông Báo & Gửi Link Cho Các Đội Tự Đăng Ký
+                    Gửi Link & Mẫu Tin Nhắn Zalo Cho Các Chi Bộ
                   </h3>
                 </div>
                 <button onClick={() => setIsShareModalOpen(false)} className="text-lg font-bold cursor-pointer">✕</button>
               </div>
 
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Đội (Mở là chọn ngày được ngay):</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={window.location.origin + window.location.pathname + '?mode=register'}
-                      className="text-xs font-mono bg-slate-50 dark:bg-slate-900"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=register');
-                        setCopiedLink(true);
-                        setTimeout(() => setCopiedLink(false), 2000);
-                      }}
-                      className="px-3 py-2 bg-indigo-600 text-white rounded-md text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-                    >
-                      {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedLink ? 'Đã sao chép' : 'Sao chép Link'}
-                    </button>
-                  </div>
-                </div>
+              {/* Share Tabs */}
+              <div className="flex border-b border-[var(--border-color)] px-6 pt-3 bg-slate-50 dark:bg-slate-900/50 gap-4">
+                <button
+                  onClick={() => setShareTab('register')}
+                  className={`pb-2.5 text-xs font-bold border-b-2 cursor-pointer transition-all ${
+                    shareTab === 'register' 
+                      ? 'border-red-600 text-red-600 dark:text-red-400' 
+                      : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  📅 1. Đăng ký Lịch họp (Trước ngày 20)
+                </button>
+                <button
+                  onClick={() => setShareTab('report')}
+                  className={`pb-2.5 text-xs font-bold border-b-2 cursor-pointer transition-all ${
+                    shareTab === 'report' 
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400' 
+                      : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  ⭐ 2. Báo cáo ĐGXL sau sinh hoạt (HD 01-HD/TU)
+                </button>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold mb-1">Mẫu tin nhắn soạn sẵn gửi nhóm Zalo các Bí thư / Đội trưởng:</label>
-                  <textarea
-                    rows={6}
-                    readOnly
-                    value={sampleZaloMessage}
-                    className="text-xs font-sans bg-slate-50 dark:bg-slate-900 p-3 leading-relaxed"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(sampleZaloMessage);
-                      setCopiedMessage(true);
-                      setTimeout(() => setCopiedMessage(false), 2000);
-                    }}
-                    className="mt-2 w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    {copiedMessage ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copiedMessage ? 'Đã sao chép tin nhắn Zalo' : 'Sao chép Toàn bộ Tin Nhắn gửi Zalo'}
-                  </button>
-                </div>
+              <div className="p-6 space-y-4">
+                {shareTab === 'register' ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Đội tự chọn ngày họp:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={window.location.origin + window.location.pathname + '?mode=register'}
+                          className="text-xs font-mono bg-slate-50 dark:bg-slate-900"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=register');
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }}
+                          className="px-3 py-2 bg-indigo-600 text-white rounded-md text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedLink ? 'Đã chép' : 'Chép Link'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Mẫu tin nhắn soạn sẵn gửi nhóm Zalo các Bí thư / Đội trưởng:</label>
+                      <textarea
+                        rows={5}
+                        readOnly
+                        value={sampleZaloRegisterMessage}
+                        className="text-xs font-sans bg-slate-50 dark:bg-slate-900 p-3 leading-relaxed"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(sampleZaloRegisterMessage);
+                          setCopiedMessage(true);
+                          setTimeout(() => setCopiedMessage(false), 2000);
+                        }}
+                        className="mt-2 w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        {copiedMessage ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedMessage ? 'Đã sao chép tin nhắn Zalo' : 'Sao chép Toàn bộ Tin Nhắn gửi Zalo'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Chi bộ gửi Báo cáo ĐGXL sau họp:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={window.location.origin + window.location.pathname + '?mode=report'}
+                          className="text-xs font-mono bg-slate-50 dark:bg-slate-900"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=report');
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedLink ? 'Đã chép' : 'Chép Link'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Mẫu tin nhắn nhắc Báo cáo ĐGXL gửi nhóm Zalo:</label>
+                      <textarea
+                        rows={5}
+                        readOnly
+                        value={sampleZaloReportMessage}
+                        className="text-xs font-sans bg-slate-50 dark:bg-slate-900 p-3 leading-relaxed"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(sampleZaloReportMessage);
+                          setCopiedMessage(true);
+                          setTimeout(() => setCopiedMessage(false), 2000);
+                        }}
+                        className="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        {copiedMessage ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedMessage ? 'Đã sao chép tin nhắn Zalo' : 'Sao chép Toàn bộ Tin Nhắn gửi Zalo'}
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-800 dark:text-blue-200">
-                  💡 <b>Sau khi up lên Vercel:</b> Link trên sẽ tự động đổi thành link online (ví dụ: <code>https://quanlydang-qltt.vercel.app/?mode=register</code>). Các Đội mở trên điện thoại hay máy tính đều tự chọn ngày được ngay!
+                  💡 <b>Tiện ích:</b> Chi bộ mở link trên điện thoại hoặc máy tính, nhập điểm tự chấm và số lượng ĐV là số liệu sẽ lập tức được tổng hợp tự động vào Biểu mẫu ĐGXL của Đảng ủy!
                 </div>
               </div>
             </div>
