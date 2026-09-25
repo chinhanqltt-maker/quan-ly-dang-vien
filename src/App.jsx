@@ -73,13 +73,15 @@ export default function App() {
   const paramYear = urlParams.get('year');
   const paramApi = urlParams.get('api');
 
+  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUk8NpDGVkRpJOumVGubycnxmc7PVyItvNnv8qjlzF3sgeY5O7aiWPDh_klwPoULzJ/exec';
+
   // Google Sheets Apps Script Web App URL
   const [googleScriptUrl, setGoogleScriptUrl] = useState(() => {
     if (paramApi) {
       localStorage.setItem('qltt_google_script_url', paramApi);
       return paramApi;
     }
-    return localStorage.getItem('qltt_google_script_url') || '';
+    return localStorage.getItem('qltt_google_script_url') || DEFAULT_GOOGLE_SCRIPT_URL;
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
