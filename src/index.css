@@ -128,33 +128,61 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
+/* Print Helper classes */
+.print-only {
+  display: none !important;
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
 /* Print Styling for Party official document */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 15mm 10mm 20mm;
+    margin: 10mm 15mm 10mm 15mm;
   }
-  html, body, .print-page, .print-page * {
-    background: #fff !important;
-    color: #000 !important;
-    font-family: "Times New Roman", Times, Georgia, serif !important;
-  }
-  .no-print, header, nav, main, footer {
-    display: none !important;
-  }
-  .print-page {
-    display: block !important;
-    width: 100% !important;
+  
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    page-break-after: avoid !important;
-    page-break-inside: avoid !important;
+    font-family: "Times New Roman", Times, Georgia, serif !important;
   }
+
+  .no-print, header, nav, main, footer, .modal {
+    display: none !important;
+  }
+
+  .print-only, .a4-page-standard {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .print-only *, .a4-page-standard * {
+    font-family: "Times New Roman", Times, Georgia, serif !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
   table {
     border-collapse: collapse !important;
+    width: 100% !important;
   }
-  .schedule-table, .schedule-table th, .schedule-table td {
-    border: 1px solid black !important;
+
+  th, td {
+    border-color: #000000 !important;
     font-family: "Times New Roman", Times, Georgia, serif !important;
   }
 }
