@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   INITIAL_MEMBERS, 
   INITIAL_MOVEMENTS, 
@@ -35,7 +35,13 @@ import {
   Archive,
   BookOpen,
   FileCheck2,
-  FileText
+  FileText,
+  RefreshCw,
+  Settings,
+  Database,
+  ExternalLink,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 // Danh sách tên chuẩn 13 Chi bộ theo mẫu HD 01-HD/TU
@@ -58,13 +64,28 @@ const STANDARD_13_BRANCHES = [
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Lấy tham số động từ URL (mode, month, year, chibo)
+  // Lấy tham số động từ URL (mode, month, year, chibo, api)
   const urlParams = new URLSearchParams(window.location.search);
   const isPublicRegisterMode = urlParams.get('mode') === 'register';
   const isPublicReportMode = urlParams.get('mode') === 'report';
   const paramChiBoId = urlParams.get('chibo');
   const paramMonth = urlParams.get('month');
   const paramYear = urlParams.get('year');
+  const paramApi = urlParams.get('api');
+
+  // Google Sheets Apps Script Web App URL
+  const [googleScriptUrl, setGoogleScriptUrl] = useState(() => {
+    if (paramApi) {
+      localStorage.setItem('qltt_google_script_url', paramApi);
+      return paramApi;
+    }
+    return localStorage.getItem('qltt_google_script_url') || '';
+  });
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState('');
+  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
+  const [apiInputUrl, setApiInputUrl] = useState(googleScriptUrl);
 
   // Core Data States
   const [members, setMembers] = useState(() => {
@@ -138,6 +159,7 @@ export default function App() {
   const [teamLocation, setTeamLocation] = useState(initialBranchObj.diaDiem);
   const [teamNote, setTeamNote] = useState('');
   const [teamSubmitted, setTeamSubmitted] = useState(false);
+  const [isSubmittingOnline, setIsSubmittingOnline] = useState(false);
 
   // Form tự báo cáo kết quả ĐGXL của Đội sau khi họp (mode=report)
   const [reportBranchId, setReportBranchId] = useState(initialSelectedBranchId);
@@ -183,6 +205,107 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('qltt_party_archived_notices', JSON.stringify(archivedNotices));
   }, [archivedNotices]);
+  useEffect(() => {
+    if (googleScriptUrl) {
+      localStorage.setItem('qltt_google_script_url', googleScriptUrl);
+    }
+  }, [googleScriptUrl]);
+
+  // HÀM ĐỒNG BỘ DỮ LIỆU TỪ GOOGLE SHEETS VỀ ỨNG DỤNG
+  const fetchFromGoogleSheets = useCallback(async (customUrl) => {
+    const targetUrl = customUrl || googleScriptUrl;
+    if (!targetUrl) return;
+
+    try {
+      setIsSyncing(true);
+      const res = await fetch(targetUrl);
+      const data = await res.json();
+
+      if (data && data.status === 'success') {
+        // 1. Cập nhật Lịch họp
+        if (data.meetings && data.meetings.length > 0) {
+          setMeetingSchedules(prev => {
+            const nextState = { ...prev };
+            data.meetings.forEach(item => {
+              const key = `${item.nam}-${item.thang}`;
+              const currentList = nextState[key] || branchDetails.map(b => ({
+                chiBoId: b.id,
+                chiBo: b.name,
+                sl: b.sl,
+                thoiGian: 'Chưa đăng ký',
+                diaDiem: b.diaDiem,
+                biThu: b.biThu,
+                sdt: b.sdt,
+                trangThai: 'Chờ đăng ký',
+                ghiChu: ''
+              }));
+
+              nextState[key] = currentList.map(bItem => {
+                if (bItem.chiBoId === Number(item.chiBoId)) {
+                  return {
+                    ...bItem,
+                    thoiGian: item.thoiGian || bItem.thoiGian,
+                    diaDiem: item.diaDiem || bItem.diaDiem,
+                    ghiChu: item.ghiChu || bItem.ghiChu,
+                    trangThai: 'Đã đăng ký (Chờ duyệt)'
+                  };
+                }
+                return bItem;
+              });
+            });
+            return nextState;
+          });
+        }
+
+        // 2. Cập nhật ĐGXL
+        if (data.dgxl && data.dgxl.length > 0) {
+          setDgxlData(prev => {
+            const nextState = { ...prev };
+            data.dgxl.forEach(item => {
+              const key = `${item.nam}-${item.thang}`;
+              const currentList = nextState[key] || STANDARD_13_BRANCHES.map(b => ({
+                chiBoId: b.id,
+                chiBo: b.shortName,
+                sl: '',
+                ngayHop: '',
+                diemDG: '',
+                mucXepLoai: '',
+                ghiChuTruDiem: ''
+              }));
+
+              nextState[key] = currentList.map(bItem => {
+                if (bItem.chiBoId === Number(item.chiBoId)) {
+                  return {
+                    ...bItem,
+                    sl: item.sl || bItem.sl,
+                    ngayHop: item.ngayHop || bItem.ngayHop,
+                    diemDG: item.diemDG !== undefined && item.diemDG !== '' ? Number(item.diemDG) : bItem.diemDG,
+                    mucXepLoai: item.mucXepLoai || bItem.mucXepLoai,
+                    ghiChuTruDiem: item.ghiChuTruDiem || bItem.ghiChuTruDiem
+                  };
+                }
+                return bItem;
+              });
+            });
+            return nextState;
+          });
+        }
+
+        setLastSyncTime(new Date().toLocaleTimeString('vi-VN'));
+      }
+    } catch (err) {
+      console.error('Lỗi đồng bộ Google Sheets:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [googleScriptUrl, branchDetails]);
+
+  // Tự động đồng bộ khi mở trang nếu đã cấu hình Google Script URL
+  useEffect(() => {
+    if (googleScriptUrl) {
+      fetchFromGoogleSheets(googleScriptUrl);
+    }
+  }, [googleScriptUrl, fetchFromGoogleSheets]);
 
   const currentKey = `${selectedYear}-${selectedMonth}`;
 
@@ -355,8 +478,8 @@ export default function App() {
     }));
   };
 
-  // Submit từ form đăng ký lịch họp (mode=register)
-  const handleTeamSubmitRegistration = (e) => {
+  // Submit từ form đăng ký lịch họp (mode=register) - Lưu Local + Gửi Google Sheets Online
+  const handleTeamSubmitRegistration = async (e) => {
     e.preventDefault();
     if (!teamDate) {
       alert('Vui lòng chọn ngày họp!');
@@ -369,8 +492,10 @@ export default function App() {
     const timeFormatted = `${dd}/${mm}/${yyyy} (${teamDayOfWeek})`;
     
     const targetBranch = branchDetails.find(b => b.id === teamSelectChiBo);
+    const branchName = targetBranch ? targetBranch.name : `Chi bộ ${teamSelectChiBo}`;
     const loc = teamLocation || (targetBranch ? targetBranch.diaDiem : 'Tại đơn vị');
 
+    // 1. Cập nhật state local
     setMeetingSchedules(prev => {
       const currentList = prev[targetKey] || branchDetails.map(b => ({
         chiBoId: b.id,
@@ -403,12 +528,38 @@ export default function App() {
       };
     });
 
+    // 2. Gửi dữ liệu lên Google Sheets Online (nếu có URL)
+    if (googleScriptUrl) {
+      setIsSubmittingOnline(true);
+      try {
+        await fetch(googleScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'register_meeting',
+            nam: targetYear,
+            thang: targetMonth,
+            chiBoId: teamSelectChiBo,
+            chiBo: branchName,
+            thoiGian: timeFormatted,
+            diaDiem: loc,
+            ghiChu: teamNote || ''
+          })
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi lên Google Sheets:', err);
+      } finally {
+        setIsSubmittingOnline(false);
+      }
+    }
+
     setTeamSubmitted(true);
     setTimeout(() => setTeamSubmitted(false), 5000);
   };
 
-  // Submit từ form báo cáo ĐGXL sau họp (mode=report)
-  const handleTeamSubmitReport = (e) => {
+  // Submit từ form báo cáo ĐGXL sau họp (mode=report) - Lưu Local + Gửi Google Sheets Online
+  const handleTeamSubmitReport = async (e) => {
     e.preventDefault();
     let targetYear = selectedYear;
     let targetMonth = selectedMonth;
@@ -421,7 +572,10 @@ export default function App() {
       dateStr = `${Number(dd)}/${Number(mm)}/${yyyy}`;
     }
     const targetKey = `${targetYear}-${targetMonth}`;
+    const targetBranch = STANDARD_13_BRANCHES.find(b => b.id === reportBranchId);
+    const branchName = targetBranch ? targetBranch.shortName : `Chi bộ ${reportBranchId}`;
 
+    // 1. Cập nhật state local
     setDgxlData(prev => {
       const currentList = prev[targetKey] || STANDARD_13_BRANCHES.map(b => ({
         chiBoId: b.id,
@@ -452,6 +606,34 @@ export default function App() {
         [targetKey]: updatedList
       };
     });
+
+    // 2. Gửi dữ liệu lên Google Sheets Online (nếu có URL)
+    if (googleScriptUrl) {
+      setIsSubmittingOnline(true);
+      try {
+        await fetch(googleScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'report_dgxl',
+            nam: targetYear,
+            thang: targetMonth,
+            chiBoId: reportBranchId,
+            chiBo: branchName,
+            sl: reportAttendance,
+            ngayHop: dateStr || '',
+            diemDG: Number(reportScore),
+            mucXepLoai: reportClassification,
+            ghiChuTruDiem: reportDeductionNote || ''
+          })
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi báo cáo ĐGXL lên Google Sheets:', err);
+      } finally {
+        setIsSubmittingOnline(false);
+      }
+    }
 
     setReportSubmitted(true);
     setTimeout(() => setReportSubmitted(false), 5000);
@@ -858,9 +1040,10 @@ export default function App() {
     }, 100);
   };
 
-  // URL link động theo Tháng và Năm đang chọn
-  const publicRegisterLink = `${window.location.origin + window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}`;
-  const publicReportLink = `${window.location.origin + window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}`;
+  // URL link động theo Tháng, Năm và API Google Sheets
+  const apiParamStr = googleScriptUrl ? `&api=${encodeURIComponent(googleScriptUrl)}` : '';
+  const publicRegisterLink = `${window.location.origin + window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}${apiParamStr}`;
+  const publicReportLink = `${window.location.origin + window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}${apiParamStr}`;
 
   const sampleZaloRegisterMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
@@ -894,7 +1077,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
                 <h4 className="font-bold text-emerald-800 text-base">Đăng ký thành công Tháng {selectedMonth}/{selectedYear}!</h4>
                 <p className="text-xs text-emerald-700">
-                  Lịch sinh hoạt của <b>{selectedBranchInfo.name}</b> vào ngày <b>{teamDate}</b> tại <b>{teamLocation}</b> đã được lưu vào hệ thống Đảng ủy bộ phận.
+                  Lịch sinh hoạt của <b>{selectedBranchInfo.name}</b> vào ngày <b>{teamDate}</b> tại <b>{teamLocation}</b> đã được gửi lên hệ thống máy chủ Đảng ủy bộ phận.
                 </p>
                 <button
                   type="button"
@@ -1019,17 +1202,18 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  disabled={isSubmittingOnline}
+                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
-                  <Send className="w-4 h-4" />
-                  Gửi Đăng Ký Lịch Họp Tháng {selectedMonth}/{selectedYear}
+                  {isSubmittingOnline ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {isSubmittingOnline ? 'Đang gửi lên hệ thống...' : `Gửi Đăng Ký Lịch Họp Tháng ${selectedMonth}/${selectedYear}`}
                 </button>
               </>
             )}
 
             <div className="flex justify-between items-center pt-2 text-xs">
               <a 
-                href={`${window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}`}
+                href={`${window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}${apiParamStr}`}
                 className="text-blue-600 hover:underline font-semibold"
               >
                 👉 Chuyển sang Báo cáo ĐGXL sau họp
@@ -1069,7 +1253,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
                 <h4 className="font-bold text-emerald-800 text-base">Gửi báo cáo thành công Tháng {selectedMonth}/{selectedYear}!</h4>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  Kết quả đánh giá xếp loại sinh hoạt của <b>{selectedBranchInfo.name}</b> (Điểm: <b>{reportScore}</b> - Xếp loại: <b>{reportClassification}</b>) đã được lưu vào hệ thống Đảng ủy.
+                  Kết quả đánh giá xếp loại sinh hoạt của <b>{selectedBranchInfo.name}</b> (Điểm: <b>{reportScore}</b> - Xếp loại: <b>{reportClassification}</b>) đã được lưu vào hệ thống máy chủ Đảng ủy.
                 </p>
 
                 {/* Nút Xuất Báo Cáo / In Ngay Sau Khi Nhập Xong */}
@@ -1236,17 +1420,18 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  disabled={isSubmittingOnline}
+                  className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
-                  <Send className="w-4 h-4" />
-                  Gửi Báo Cáo Đánh Giá Xếp Loại Tháng {selectedMonth}/{selectedYear}
+                  {isSubmittingOnline ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {isSubmittingOnline ? 'Đang gửi lên hệ thống...' : `Gửi Báo Cáo Đánh Giá Xếp Loại Tháng ${selectedMonth}/${selectedYear}`}
                 </button>
               </>
             )}
 
             <div className="flex justify-between items-center pt-2 text-xs">
               <a 
-                href={`${window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}`}
+                href={`${window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}${apiParamStr}`}
                 className="text-red-600 hover:underline font-semibold"
               >
                 👉 Chuyển sang Đăng ký Lịch họp (Trước ngày 20)
@@ -1289,7 +1474,36 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              {/* Nút Đồng bộ Google Sheets */}
+              <button
+                onClick={() => {
+                  if (!googleScriptUrl) {
+                    setIsApiModalOpen(true);
+                  } else {
+                    fetchFromGoogleSheets(googleScriptUrl);
+                  }
+                }}
+                disabled={isSyncing}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                  googleScriptUrl 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300' 
+                    : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 animate-pulse'
+                }`}
+                title={googleScriptUrl ? `Đồng bộ với Google Sheets (Lần cuối: ${lastSyncTime || 'Chưa đồng bộ'})` : 'Bấm để kết nối Google Sheets'}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Đang tải...' : googleScriptUrl ? 'Đồng bộ Sheets' : 'Kết nối Sheets'}
+              </button>
+
+              <button
+                onClick={() => setIsApiModalOpen(true)}
+                className="p-2 rounded-lg border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all cursor-pointer"
+                title="Cài đặt kết nối Google Sheets"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+
               {activeTab === 'dgxl' ? (
                 <>
                   <button 
@@ -1298,7 +1512,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                     title="Tải về file Word (.DOC) ĐGXL chuẩn 1 trang A4 y hệt mẫu"
                   >
                     <FileText className="w-4 h-4" />
-                    Xuất File Word (.DOC) ĐGXL
+                    Xuất File Word (.DOC)
                   </button>
 
                   <button 
@@ -1307,7 +1521,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                     title="In bảng ĐGXL trình ký Bí thư Đảng ủy (Chuẩn 1 trang A4)"
                   >
                     <Printer className="w-4 h-4" />
-                    In Báo Cáo ĐGXL (1 Trang)
+                    In ĐGXL (1 Trang)
                   </button>
                 </>
               ) : (
@@ -1318,7 +1532,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                     title="Tải về file Word (.DOC) chuẩn 100% mở bằng Microsoft Word không bao giờ lỗi"
                   >
                     <FileText className="w-4 h-4" />
-                    Tải File Word (.DOC) Lịch Họp
+                    Tải File Word (.DOC)
                   </button>
 
                   <button 
@@ -1856,7 +2070,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                     onClick={handleExportDGXLToExcel}
                     className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-all"
                   >
-                    <FileSpreadsheet className="w-4 h-4" /> Xuất Excel
+                    <FileSpreadsheet className="w-3.5 h-3.5" /> Xuất Excel
                   </button>
                 </div>
               </div>
@@ -2276,7 +2490,87 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
         </main>
 
-        {/* MODAL: CHIA SẺ LINK VÀ MẪU TIN NHẮN ZALO CHO CHI BỘ */}
+        {/* MODAL 1: CÀI ĐẶT KẾT NỐI GOOGLE SHEETS */}
+        {isApiModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/20">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-emerald-600" />
+                  <h3 className="font-bold text-base text-[var(--text-main)]">
+                    Kết Nối Cơ Sở Dữ Liệu Google Sheets Online
+                  </h3>
+                </div>
+                <button onClick={() => setIsApiModalOpen(false)} className="text-lg font-bold cursor-pointer">✕</button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold mb-1.5 text-[var(--text-main)]">
+                    Đường dẫn Web App URL của Google Apps Script:
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    value={apiInputUrl}
+                    onChange={(e) => setApiInputUrl(e.target.value.trim())}
+                    className="w-full text-xs font-mono bg-slate-50 dark:bg-slate-900 p-2.5 border rounded-lg"
+                  />
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                    Dán URL Web App triển khai từ Google Sheets của đồng chí vào đây để tự động nhận đăng ký từ 13 Chi bộ.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setGoogleScriptUrl(apiInputUrl);
+                      localStorage.setItem('qltt_google_script_url', apiInputUrl);
+                      setIsApiModalOpen(false);
+                      if (apiInputUrl) {
+                        fetchFromGoogleSheets(apiInputUrl);
+                      }
+                      alert('Đã lưu cấu hình Google Sheets thành công!');
+                    }}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                  >
+                    <Check className="w-4 h-4" />
+                    Lưu Cấu Hình & Đồng Bộ Ngay
+                  </button>
+
+                  {googleScriptUrl && (
+                    <button
+                      onClick={() => {
+                        setGoogleScriptUrl('');
+                        setApiInputUrl('');
+                        localStorage.removeItem('qltt_google_script_url');
+                        alert('Đã ngắt kết nối Google Sheets.');
+                      }}
+                      className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-lg cursor-pointer"
+                    >
+                      Ngắt kết nối
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-800 dark:text-blue-200 space-y-1.5 border border-blue-200 dark:border-blue-900">
+                  <div className="font-bold flex items-center gap-1">
+                    💡 Hướng dẫn lấy Web App URL trên Google Sheets (1 phút):
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
+                    <li>Mở file Google Sheets của đồng chí ➔ Bấm menu <b>Tiện ích mở rộng (Extensions)</b> ➔ Chọn <b>Apps Script</b>.</li>
+                    <li>Dán đoạn mã script được cung cấp vào và bấm <b>Lưu (Save)</b>.</li>
+                    <li>Bấm nút <b>Triển khai (Deploy)</b> ➔ Chọn <b>Tùy chọn triển khai mới (New deployment)</b>.</li>
+                    <li>Chọn loại: <b>Ứng dụng web (Web app)</b>, mục <i>Ai có quyền truy cập (Who has access)</i> chọn <b>Bất kỳ ai (Anyone)</b>.</li>
+                    <li>Sao chép link Web App (có đuôi <code>/exec</code>) dán vào ô trên là xong!</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: CHIA SẺ LINK VÀ MẪU TIN NHẮN ZALO CHO CHI BỘ */}
         {isShareModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
