@@ -35,8 +35,7 @@ import {
   Archive,
   BookOpen,
   FileCheck2,
-  FileText,
-  Eye
+  FileText
 } from 'lucide-react';
 
 // Danh sách tên chuẩn 13 Chi bộ theo mẫu HD 01-HD/TU
@@ -59,11 +58,13 @@ const STANDARD_13_BRANCHES = [
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Check URL params for Member Registration / Report Mode
+  // Lấy tham số động từ URL (mode, month, year, chibo)
   const urlParams = new URLSearchParams(window.location.search);
   const isPublicRegisterMode = urlParams.get('mode') === 'register';
   const isPublicReportMode = urlParams.get('mode') === 'report';
   const paramChiBoId = urlParams.get('chibo');
+  const paramMonth = urlParams.get('month');
+  const paramYear = urlParams.get('year');
 
   // Core Data States
   const [members, setMembers] = useState(() => {
@@ -110,8 +111,10 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState('meetings');
-  const [selectedYear, setSelectedYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(9);
+
+  // Đọc tháng và năm linh hoạt từ URL nếu có (ví dụ ?month=10&year=2026), mặc định Tháng 10 Năm 2026
+  const [selectedYear, setSelectedYear] = useState(() => paramYear ? Number(paramYear) : 2026);
+  const [selectedMonth, setSelectedMonth] = useState(() => paramMonth ? Number(paramMonth) : 10);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterChiBo, setFilterChiBo] = useState('Tất cả');
@@ -270,7 +273,7 @@ export default function App() {
     if (dgxlData[currentKey]) {
       return dgxlData[currentKey];
     }
-    // Khởi tạo theo danh sách mẫu: các chi bộ 1, 3, 7 có mẫu như hình, các chi bộ còn lại để chờ nhập
+    // Khởi tạo theo danh sách chuẩn 13 chi bộ
     return STANDARD_13_BRANCHES.map(b => {
       const schedule = currentMonthSchedules.find(s => s.chiBoId === b.id) || {};
       let meetingDate = schedule.thoiGian || '';
@@ -278,41 +281,6 @@ export default function App() {
         meetingDate = meetingDate.split('(')[0].trim();
       }
       
-      // Khởi tạo mặc định một số chi bộ mẫu hoặc dữ liệu đã có
-      if (b.id === 1) {
-        return {
-          chiBoId: b.id,
-          chiBo: b.shortName,
-          sl: `${b.sl}/${b.sl}`,
-          ngayHop: meetingDate || '03/6/2026',
-          diemDG: 100,
-          mucXepLoai: 'Tốt',
-          ghiChuTruDiem: ''
-        };
-      }
-      if (b.id === 3) {
-        return {
-          chiBoId: b.id,
-          chiBo: b.shortName,
-          sl: `${b.sl}/${b.sl}`,
-          ngayHop: meetingDate || '3/9/2026',
-          diemDG: 100,
-          mucXepLoai: 'Tốt',
-          ghiChuTruDiem: ''
-        };
-      }
-      if (b.id === 7) {
-        return {
-          chiBoId: b.id,
-          chiBo: b.shortName,
-          sl: `${b.sl}/${b.sl}`,
-          ngayHop: meetingDate || '4/9/2026',
-          diemDG: 100,
-          mucXepLoai: 'Tốt',
-          ghiChuTruDiem: ''
-        };
-      }
-
       return {
         chiBoId: b.id,
         chiBo: b.shortName,
@@ -395,16 +363,45 @@ export default function App() {
       return;
     }
     const [yyyy, mm, dd] = teamDate.split('-');
+    const targetYear = Number(yyyy);
+    const targetMonth = Number(mm);
+    const targetKey = `${targetYear}-${targetMonth}`;
     const timeFormatted = `${dd}/${mm}/${yyyy} (${teamDayOfWeek})`;
     
     const targetBranch = branchDetails.find(b => b.id === teamSelectChiBo);
     const loc = teamLocation || (targetBranch ? targetBranch.diaDiem : 'Tại đơn vị');
 
-    handleUpdateSchedule(teamSelectChiBo, 'thoiGian', timeFormatted);
-    handleUpdateSchedule(teamSelectChiBo, 'diaDiem', loc);
-    if (teamNote) {
-      handleUpdateSchedule(teamSelectChiBo, 'ghiChu', teamNote);
-    }
+    setMeetingSchedules(prev => {
+      const currentList = prev[targetKey] || branchDetails.map(b => ({
+        chiBoId: b.id,
+        chiBo: b.name,
+        sl: b.sl,
+        thoiGian: 'Chưa đăng ký',
+        diaDiem: b.diaDiem,
+        biThu: b.biThu,
+        sdt: b.sdt,
+        trangThai: 'Chờ đăng ký',
+        ghiChu: ''
+      }));
+
+      const updatedList = currentList.map(item => {
+        if (item.chiBoId === teamSelectChiBo) {
+          return {
+            ...item,
+            thoiGian: timeFormatted,
+            diaDiem: loc,
+            ghiChu: teamNote || item.ghiChu || '',
+            trangThai: 'Đã đăng ký (Chờ duyệt)'
+          };
+        }
+        return item;
+      });
+
+      return {
+        ...prev,
+        [targetKey]: updatedList
+      };
+    });
 
     setTeamSubmitted(true);
     setTimeout(() => setTeamSubmitted(false), 5000);
@@ -413,21 +410,48 @@ export default function App() {
   // Submit từ form báo cáo ĐGXL sau họp (mode=report)
   const handleTeamSubmitReport = (e) => {
     e.preventDefault();
+    let targetYear = selectedYear;
+    let targetMonth = selectedMonth;
     let dateStr = reportMeetingDate;
+
     if (reportMeetingDate && reportMeetingDate.includes('-')) {
       const [yyyy, mm, dd] = reportMeetingDate.split('-');
+      targetYear = Number(yyyy);
+      targetMonth = Number(mm);
       dateStr = `${Number(dd)}/${Number(mm)}/${yyyy}`;
     }
+    const targetKey = `${targetYear}-${targetMonth}`;
 
-    handleUpdateDGXL(reportBranchId, 'sl', reportAttendance);
-    if (dateStr) {
-      handleUpdateDGXL(reportBranchId, 'ngayHop', dateStr);
-    }
-    handleUpdateDGXL(reportBranchId, 'diemDG', Number(reportScore));
-    handleUpdateDGXL(reportBranchId, 'mucXepLoai', reportClassification);
-    if (reportDeductionNote) {
-      handleUpdateDGXL(reportBranchId, 'ghiChuTruDiem', reportDeductionNote);
-    }
+    setDgxlData(prev => {
+      const currentList = prev[targetKey] || STANDARD_13_BRANCHES.map(b => ({
+        chiBoId: b.id,
+        chiBo: b.shortName,
+        sl: '',
+        ngayHop: '',
+        diemDG: '',
+        mucXepLoai: '',
+        ghiChuTruDiem: ''
+      }));
+
+      const updatedList = currentList.map(item => {
+        if (item.chiBoId === reportBranchId) {
+          return {
+            ...item,
+            sl: reportAttendance,
+            ngayHop: dateStr || item.ngayHop,
+            diemDG: Number(reportScore),
+            mucXepLoai: reportClassification,
+            ghiChuTruDiem: reportDeductionNote || item.ghiChuTruDiem || ''
+          };
+        }
+        return item;
+      });
+
+      return {
+        ...prev,
+        [targetKey]: updatedList
+      };
+    });
 
     setReportSubmitted(true);
     setTimeout(() => setReportSubmitted(false), 5000);
@@ -834,15 +858,19 @@ export default function App() {
     }, 100);
   };
 
+  // URL link động theo Tháng và Năm đang chọn
+  const publicRegisterLink = `${window.location.origin + window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}`;
+  const publicReportLink = `${window.location.origin + window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}`;
+
   const sampleZaloRegisterMessage = `[THÔNG BÁO ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
 Thực hiện Quy chế làm việc, đề nghị các Chi bộ chủ động đăng ký lịch sinh hoạt lệ tháng ${selectedMonth}/${selectedYear} trước ngày 20 để Đảng ủy tổng hợp xin ý kiến Lãnh đạo và ban hành Thông báo chính thức.
-👉 Link đăng ký trực tuyến: ${window.location.origin + window.location.pathname}?mode=register`;
+👉 Link đăng ký trực tuyến Tháng ${selectedMonth}/${selectedYear}: ${publicRegisterLink}`;
 
   const sampleZaloReportMessage = `[BÁO CÁO ĐÁNH GIÁ XẾP LOẠI CHI BỘ THÁNG ${selectedMonth}/${selectedYear}]
 Kính gửi: Bí thư các Chi bộ trực thuộc (Đội 1 đến Đội 12 và Khối phòng).
 Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức buổi sinh hoạt lệ hoàn thành tự chấm điểm và gửi Báo cáo Đánh giá Xếp loại về Đảng ủy bộ phận.
-👉 Link gửi Báo cáo ĐGXL trực tuyến: ${window.location.origin + window.location.pathname}?mode=report`;
+👉 Link gửi Báo cáo ĐGXL trực tuyến Tháng ${selectedMonth}/${selectedYear}: ${publicReportLink}`;
 
   // GIAO DIỆN DÀNH CHO CÁC ĐỘI TỰ ĐĂNG KÝ LỊCH HỌP (mode=register)
   if (isPublicRegisterMode) {
@@ -857,16 +885,16 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
             </div>
             <h2 className="text-base font-bold uppercase tracking-wide">ĐẢNG ỦY BỘ PHẬN CHI CỤC QLTT</h2>
             <h3 className="text-lg font-black mt-1">ĐĂNG KÝ LỊCH SINH HOẠT LỆ CHI BỘ</h3>
-            <p className="text-xs text-red-100 mt-1">Tháng {selectedMonth} năm {selectedYear}</p>
+            <p className="text-sm font-semibold text-yellow-300 mt-1">Tháng {selectedMonth} năm {selectedYear}</p>
           </div>
 
           <form onSubmit={handleTeamSubmitRegistration} className="p-6 space-y-4">
             {teamSubmitted ? (
               <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                <h4 className="font-bold text-emerald-800 text-base">Đăng ký thành công!</h4>
+                <h4 className="font-bold text-emerald-800 text-base">Đăng ký thành công Tháng {selectedMonth}/{selectedYear}!</h4>
                 <p className="text-xs text-emerald-700">
-                  Lịch sinh hoạt của <b>{selectedBranchInfo.name}</b> tại <b>{teamLocation}</b> đã được lưu vào hệ thống Đảng ủy bộ phận.
+                  Lịch sinh hoạt của <b>{selectedBranchInfo.name}</b> vào ngày <b>{teamDate}</b> tại <b>{teamLocation}</b> đã được lưu vào hệ thống Đảng ủy bộ phận.
                 </p>
                 <button
                   type="button"
@@ -878,12 +906,40 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
               </div>
             ) : (
               <>
+                {/* Cho phép chọn Tháng và Năm đăng ký */}
+                <div className="grid grid-cols-2 gap-3 bg-red-50/60 p-3 rounded-xl border border-red-200">
+                  <div>
+                    <label className="block text-xs font-bold text-red-800 mb-1">1. Đăng ký cho Tháng (*)</label>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="w-full p-2 border border-red-300 rounded-lg text-sm font-bold text-red-700 bg-white"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                        <option key={m} value={m}>Tháng {m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-red-800 mb-1">Năm (*)</label>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="w-full p-2 border border-red-300 rounded-lg text-sm font-bold text-red-700 bg-white"
+                    >
+                      {[2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>Năm {y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">1. Chọn Chi bộ trực thuộc (*)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">2. Chọn Chi bộ trực thuộc (*)</label>
                   <select
                     value={teamSelectChiBo}
                     onChange={(e) => setTeamSelectChiBo(Number(e.target.value))}
-                    className="w-full p-2.5 border rounded-lg text-sm font-bold text-red-700 bg-red-50/50 border-red-200"
+                    className="w-full p-2.5 border rounded-lg text-sm font-bold text-slate-800 bg-white border-slate-300"
                   >
                     {branchDetails.map(b => (
                       <option key={b.id} value={b.id}>{b.name} (Bí thư: {b.biThu} - {b.sl} ĐV)</option>
@@ -893,22 +949,26 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">2. Chọn Ngày họp (*)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">3. Chọn Ngày họp (*)</label>
                     <input
                       type="date"
                       required
-                      min={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
-                      max={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${new Date(selectedYear, selectedMonth, 0).getDate()}`}
                       value={teamDate}
                       onChange={(e) => {
-                        setTeamDate(e.target.value);
-                        if (e.target.value) {
-                          const d = new Date(e.target.value);
+                        const val = e.target.value;
+                        setTeamDate(val);
+                        if (val) {
+                          const [yyyy, mm, dd] = val.split('-');
+                          const m = Number(mm);
+                          const y = Number(yyyy);
+                          if (m !== selectedMonth) setSelectedMonth(m);
+                          if (y !== selectedYear) setSelectedYear(y);
+                          const d = new Date(val);
                           const days = ['Chủ Nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'];
                           setTeamDayOfWeek(days[d.getDay()]);
                         }
                       }}
-                      className="w-full p-2.5 border rounded-lg text-sm bg-white"
+                      className="w-full p-2.5 border rounded-lg text-sm bg-white font-semibold"
                     />
                   </div>
 
@@ -927,7 +987,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-red-600" />
-                      3. Địa điểm tổ chức sinh hoạt
+                      4. Địa điểm tổ chức sinh hoạt
                     </label>
                     <span className="text-[11px] text-emerald-600 font-semibold">(Mặc định theo dữ liệu của Đội)</span>
                   </div>
@@ -942,7 +1002,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    4. Ghi chú biến động đảng viên (nếu có)
+                    5. Ghi chú biến động đảng viên (nếu có)
                   </label>
                   <input
                     type="text"
@@ -962,14 +1022,14 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                   className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Send className="w-4 h-4" />
-                  Gửi Đăng Ký Lịch Họp
+                  Gửi Đăng Ký Lịch Họp Tháng {selectedMonth}/{selectedYear}
                 </button>
               </>
             )}
 
             <div className="flex justify-between items-center pt-2 text-xs">
               <a 
-                href={window.location.pathname + '?mode=report'}
+                href={`${window.location.pathname}?mode=report&month=${selectedMonth}&year=${selectedYear}`}
                 className="text-blue-600 hover:underline font-semibold"
               >
                 👉 Chuyển sang Báo cáo ĐGXL sau họp
@@ -1000,14 +1060,14 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
             </div>
             <h2 className="text-base font-bold uppercase tracking-wide">ĐẢNG ỦY CHI CỤC QUẢN LÝ THỊ TRƯỜNG</h2>
             <h3 className="text-lg font-black mt-1">BÁO CÁO ĐÁNH GIÁ, XẾP LOẠI SINH HOẠT CHI BỘ</h3>
-            <p className="text-xs text-blue-100 mt-1">Theo Hướng dẫn 01-HD/TU • Tháng {selectedMonth} năm {selectedYear}</p>
+            <p className="text-sm font-semibold text-yellow-300 mt-1">Theo Hướng dẫn 01-HD/TU • Tháng {selectedMonth} năm {selectedYear}</p>
           </div>
 
           <form onSubmit={handleTeamSubmitReport} className="p-6 space-y-4">
             {reportSubmitted ? (
               <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                <h4 className="font-bold text-emerald-800 text-base">Gửi báo cáo thành công!</h4>
+                <h4 className="font-bold text-emerald-800 text-base">Gửi báo cáo thành công Tháng {selectedMonth}/{selectedYear}!</h4>
                 <p className="text-xs text-emerald-700 leading-relaxed">
                   Kết quả đánh giá xếp loại sinh hoạt của <b>{selectedBranchInfo.name}</b> (Điểm: <b>{reportScore}</b> - Xếp loại: <b>{reportClassification}</b>) đã được lưu vào hệ thống Đảng ủy.
                 </p>
@@ -1045,12 +1105,40 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
               </div>
             ) : (
               <>
+                {/* Cho phép chọn Tháng và Năm báo cáo */}
+                <div className="grid grid-cols-2 gap-3 bg-blue-50/60 p-3 rounded-xl border border-blue-200">
+                  <div>
+                    <label className="block text-xs font-bold text-blue-900 mb-1">1. Báo cáo cho Tháng (*)</label>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="w-full p-2 border border-blue-300 rounded-lg text-sm font-bold text-blue-800 bg-white"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                        <option key={m} value={m}>Tháng {m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-blue-900 mb-1">Năm (*)</label>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="w-full p-2 border border-blue-300 rounded-lg text-sm font-bold text-blue-800 bg-white"
+                    >
+                      {[2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>Năm {y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">1. Chọn Chi bộ báo cáo (*)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">2. Chọn Chi bộ báo cáo (*)</label>
                   <select
                     value={reportBranchId}
                     onChange={(e) => setReportBranchId(Number(e.target.value))}
-                    className="w-full p-2.5 border rounded-lg text-sm font-bold text-blue-800 bg-blue-50/50 border-blue-200"
+                    className="w-full p-2.5 border rounded-lg text-sm font-bold text-blue-800 bg-white border-blue-200"
                   >
                     {branchDetails.map(b => (
                       <option key={b.id} value={b.id}>{b.name} (Bí thư: {b.biThu} - {b.sl} ĐV)</option>
@@ -1060,7 +1148,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">2. Số đảng viên dự / Tổng số (*)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">3. Số đảng viên dự / Tổng số (*)</label>
                     <input
                       type="text"
                       required
@@ -1072,20 +1160,30 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">3. Ngày họp thực tế (*)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">4. Ngày họp thực tế (*)</label>
                     <input
                       type="date"
                       required
                       value={reportMeetingDate}
-                      onChange={(e) => setReportMeetingDate(e.target.value)}
-                      className="w-full p-2.5 border rounded-lg text-sm bg-white"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setReportMeetingDate(val);
+                        if (val) {
+                          const [yyyy, mm] = val.split('-');
+                          const m = Number(mm);
+                          const y = Number(yyyy);
+                          if (m !== selectedMonth) setSelectedMonth(m);
+                          if (y !== selectedYear) setSelectedYear(y);
+                        }
+                      }}
+                      className="w-full p-2.5 border rounded-lg text-sm bg-white font-semibold"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">4. Điểm tự đánh giá (0-100) (*)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">5. Điểm tự đánh giá (0-100) (*)</label>
                     <input
                       type="number"
                       required
@@ -1105,7 +1203,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">5. Mức xếp loại chi bộ (*)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">6. Mức xếp loại chi bộ (*)</label>
                     <select
                       value={reportClassification}
                       onChange={(e) => setReportClassification(e.target.value)}
@@ -1121,7 +1219,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    6. Thuyết minh điểm trừ / Ghi chú biến động (nếu có)
+                    7. Thuyết minh điểm trừ / Ghi chú biến động (nếu có)
                   </label>
                   <textarea
                     rows={3}
@@ -1141,14 +1239,14 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                   className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Send className="w-4 h-4" />
-                  Gửi Báo Cáo Đánh Giá Xếp Loại
+                  Gửi Báo Cáo Đánh Giá Xếp Loại Tháng {selectedMonth}/{selectedYear}
                 </button>
               </>
             )}
 
             <div className="flex justify-between items-center pt-2 text-xs">
               <a 
-                href={window.location.pathname + '?mode=register'}
+                href={`${window.location.pathname}?mode=register&month=${selectedMonth}&year=${selectedYear}`}
                 className="text-red-600 hover:underline font-semibold"
               >
                 👉 Chuyển sang Đăng ký Lịch họp (Trước ngày 20)
@@ -1601,7 +1699,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                               type="text"
                               value={item.thoiGian}
                               onChange={(e) => handleUpdateSchedule(item.chiBoId, 'thoiGian', e.target.value)}
-                              placeholder="VD: 03/9/2026 (thứ Năm)"
+                              placeholder="VD: 03/10/2026 (thứ Bảy)"
                               className="text-xs font-medium text-blue-600 dark:text-blue-400"
                             />
                           </td>
@@ -1817,7 +1915,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                               type="text"
                               value={d.ngayHop || ''}
                               onChange={(e) => handleUpdateDGXL(d.chiBoId, 'ngayHop', e.target.value)}
-                              placeholder="03/9/2026"
+                              placeholder="03/10/2026"
                               className="w-24 text-center text-xs font-medium text-blue-600 dark:text-blue-400"
                             />
                           </td>
@@ -2186,7 +2284,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 <div className="flex items-center gap-2">
                   <Share2 className="w-5 h-5 text-indigo-600" />
                   <h3 className="font-bold text-base text-[var(--text-main)]">
-                    Gửi Link & Mẫu Tin Nhắn Zalo Cho Các Chi Bộ
+                    Gửi Link & Mẫu Tin Nhắn Zalo Cho Các Chi Bộ (Tháng {selectedMonth}/{selectedYear})
                   </h3>
                 </div>
                 <button onClick={() => setIsShareModalOpen(false)} className="text-lg font-bold cursor-pointer">✕</button>
@@ -2202,7 +2300,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                       : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
                   }`}
                 >
-                  📅 1. Đăng ký Lịch họp (Trước ngày 20)
+                  📅 1. Đăng ký Lịch họp Tháng {selectedMonth}
                 </button>
                 <button
                   onClick={() => setShareTab('report')}
@@ -2212,7 +2310,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                       : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'
                   }`}
                 >
-                  ⭐ 2. Báo cáo ĐGXL sau sinh hoạt (HD 01-HD/TU)
+                  ⭐ 2. Báo cáo ĐGXL Tháng {selectedMonth}
                 </button>
               </div>
 
@@ -2220,17 +2318,17 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 {shareTab === 'register' ? (
                   <>
                     <div>
-                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Đội tự chọn ngày họp:</label>
+                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Đội đăng ký Tháng {selectedMonth}/{selectedYear}:</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           readOnly
-                          value={window.location.origin + window.location.pathname + '?mode=register'}
+                          value={publicRegisterLink}
                           className="text-xs font-mono bg-slate-50 dark:bg-slate-900"
                         />
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=register');
+                            navigator.clipboard.writeText(publicRegisterLink);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
                           }}
@@ -2266,17 +2364,17 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 ) : (
                   <>
                     <div>
-                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Chi bộ gửi Báo cáo ĐGXL sau họp:</label>
+                      <label className="block text-xs font-bold mb-1">Link trực tiếp gửi cho các Chi bộ gửi Báo cáo ĐGXL Tháng {selectedMonth}/{selectedYear}:</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           readOnly
-                          value={window.location.origin + window.location.pathname + '?mode=report'}
+                          value={publicReportLink}
                           className="text-xs font-mono bg-slate-50 dark:bg-slate-900"
                         />
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=report');
+                            navigator.clipboard.writeText(publicReportLink);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
                           }}
@@ -2312,7 +2410,7 @@ Theo Hướng dẫn 01-HD/TU, đề nghị các Chi bộ sau khi tổ chức bu�
                 )}
 
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-800 dark:text-blue-200">
-                  💡 <b>Tiện ích:</b> Chi bộ mở link trên điện thoại hoặc máy tính, nhập điểm tự chấm và số lượng ĐV là số liệu sẽ lập tức được tổng hợp tự động vào Biểu mẫu ĐGXL của Đảng ủy!
+                  💡 <b>Tiện ích:</b> Link trên đã được gắn sẵn Tháng {selectedMonth}/{selectedYear}. Chi bộ bấm vào link sẽ mở đúng Tháng {selectedMonth} để đăng ký hoặc báo cáo, đồng thời có thể tự đổi sang bất kỳ tháng nào tùy ý!
                 </div>
               </div>
             </div>
